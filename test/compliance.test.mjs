@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const read = (f) => readFileSync(new URL('../site/' + f, import.meta.url), 'utf8');
 
@@ -21,4 +21,16 @@ test('terms, support and landing page are linked and routed', () => {
     assert.ok(read('index.html').includes('href="/' + page + '"'));
     assert.ok(read(page + '.html').includes('href="/privacy"'));
   }
+});
+
+test('every HTML page links to the privacy policy and the terms', () => {
+  const pages = readdirSync(new URL('../site/', import.meta.url)).filter((f) => f.endsWith('.html'));
+  assert.ok(pages.length >= 6);
+  for (const f of pages) {
+    const html = read(f);
+    assert.ok(html.includes('href="/privacy"'), f + ' must link /privacy');
+    assert.ok(html.includes('href="/terms"'), f + ' must link /terms');
+  }
+  const app = read('app.js');
+  assert.ok(app.includes("['/privacy', 'Privacy policy']") && app.includes("['/terms', 'Terms']"), 'Extension and Settings pages carry the legal links');
 });

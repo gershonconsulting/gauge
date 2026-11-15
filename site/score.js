@@ -1,10 +1,10 @@
 // Gauge — capacity model. Shared by the report page (browser) and the tests (Node).
-// "You are using X% of your Sales Navigator capacity": the average of up to seven levers, each 0–100%.
+// "You are using X% of your Sales Navigator capacity": the average of up to eight levers, each 0–100%.
 // Levers with no reading are left out of the average and listed as "not read".
 // A lever is only suggested as a move when it is below its target (70% is "well filled").
 // Targets and limits are Claude's first proposal (2026-11-14), not yet confirmed by Olivier.
 
-export const LIMITS = { inmailPerMonth: 50, invitesPerWeek: 100, savedLeads: 10000, savedAccounts: 10000 };
+export const LIMITS = { inmailPerMonth: 50, invitesPerWeek: 100, savedLeads: 10000, savedAccounts: 10000, groups: 100 };
 
 const pct = (x) => Math.max(0, Math.min(100, Math.round(x * 100)));
 
@@ -36,6 +36,13 @@ export const LEVERS = [
     detail: (s) => `${fmt(s.salesnav.savedLeads)} of ${fmt(LIMITS.savedLeads)}`,
     move: 'Save the decision-makers you want to reach',
     why: 'Saved leads unlock job-change and post alerts, your best reasons to write.',
+  },
+  {
+    id: 'groups', group: 'fill', name: 'Groups joined', target: 70,
+    read: (s) => (s.groups?.joined == null ? null : pct(s.groups.joined / LIMITS.groups)),
+    detail: (s) => `${fmt(s.groups.joined)} of the ${LIMITS.groups} LinkedIn allows`,
+    move: 'Join the groups your buyers are in',
+    why: 'Group members can be found and messaged through the group. Each empty slot is an audience you are not reaching.',
   },
   {
     id: 'find', group: 'work', name: 'Finding the right people', target: 70,
@@ -86,18 +93,13 @@ export function gradeFor(score) {
   return 'F';
 }
 
-export function computeGrade(signals) {
-  const s = signals || {};
-  const levers = LEVERS.map((l) => {
-    const value = l.read(s);
-    return { id: l.id, group: l.group, name: l.name, value, detail: value == null ? null : l.detail(s), target: l.target };
-  });
+// Averages and the top-3 moves from lever values (shared by the report and the /app dashboard).
+function summarize(levers) {
   const got = levers.filter((l) => l.value != null);
   const overall = avg(got.map((l) => l.value));
   const fill = avg(got.filter((l) => l.group === 'fill').map((l) => l.value));
   const work = avg(got.filter((l) => l.group === 'work').map((l) => l.value));
   const n = got.length;
-
   const moves = got
     .filter((l) => l.value < l.target)
     .map((l) => {
@@ -107,6 +109,27 @@ export function computeGrade(signals) {
     .sort((a, b) => b.gain - a.gain)
     .slice(0, 3);
   const after = overall == null ? null : Math.min(100, overall + moves.reduce((a, m) => a + m.gain, 0));
+  return { overall, fill, work, moves, after };
+}
+
+// Rebuild levers and moves from saved lever percentages ({ inmail: 0, lists: 7, … }), as stored per test.
+export function fromLevers(values) {
+  const v = values || {};
+  const levers = LEVERS.map((l) => {
+    const x = v[l.id];
+    return { id: l.id, group: l.group, name: l.name, value: Number.isInteger(x) && x >= 0 && x <= 100 ? x : null, target: l.target };
+  });
+  const r = summarize(levers);
+  return { ...r, grade: gradeFor(r.overall), afterGrade: gradeFor(r.after), levers };
+}
+
+export function computeGrade(signals) {
+  const s = signals || {};
+  const levers = LEVERS.map((l) => {
+    const value = l.read(s);
+    return { id: l.id, group: l.group, name: l.name, value, detail: value == null ? null : l.detail(s), target: l.target };
+  });
+  const { overall, fill, work, moves, after } = summarize(levers);
 
   const inv = s.invitations;
   const kpis = {

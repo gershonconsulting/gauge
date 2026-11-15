@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gauge — your Sales Navigator dashboard</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/gauge.css">
+<link rel="stylesheet" href="/report.css">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body class="app">
+<div class="topbar">
+  <button id="menu-btn" class="menu-btn" type="button" aria-controls="side" aria-expanded="false" aria-label="Open menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <a class="brand" href="/app#dashboard"><svg viewBox="0 0 32 32" fill="none" stroke="#FE1B04" stroke-width="2.6" stroke-linecap="round"><path d="M5 22a11 11 0 1 1 22 0"/><path d="M16 22l5-8"/></svg>Gauge</a>
+</div>
+<div class="shell">
+  <nav id="side" class="side" aria-label="Gauge menu">
+    <a class="brand" href="/app#dashboard"><svg viewBox="0 0 32 32" fill="none" stroke="#FE1B04" stroke-width="2.6" stroke-linecap="round"><path d="M5 22a11 11 0 1 1 22 0"/><path d="M16 22l5-8"/></svg>Gauge <small>by Gershon.ai</small></a>
+    <ul class="menu">
+      <li><a href="#dashboard" data-page="dashboard"><svg viewBox="0 0 24 24"><path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 16l4-5"/></svg>Dashboard</a></li>
+      <li><a href="#history" data-page="history"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M5 15l4-4 4 3 6-7"/></svg>History</a></li>
+      <li><a href="#compare" data-page="compare"><svg viewBox="0 0 24 24"><path d="M6 20V11M12 20V5M18 20v-6"/></svg>Compare</a></li>
+      <li><a href="#invite" data-page="invite"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M18 8v6M15 11h6"/></svg>Invite</a></li>
+      <li><a href="#share" data-page="share"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/></svg>Share</a></li>
+      <li><a href="#extension" data-page="extension"><svg viewBox="0 0 24 24"><path d="M9 4h6v4h4v12H5V8h4z"/></svg>Extension</a></li>
+      <li><a href="#settings" data-page="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Settings</a></li>
+    </ul>
+    <div id="side-who" class="side-who" hidden><span class="avatar" id="side-avatar"></span><span id="side-name"></span></div>
+    <div class="side-foot" aria-label="Legal">
+      <p class="side-h">Legal</p>
+      <a href="/privacy">Privacy policy</a>
+      <a href="/terms">Terms</a>
+      <a href="/support">Support</a>
+    </div>
+  </nav>
+  <div id="scrim" class="scrim" hidden></div>
+
+  <main class="content" id="content">
+    <div id="banner" class="banner" hidden></div>
+
+    <section id="signed-out" class="card hero" hidden>
+      <h1>Sign in to open your Gauge</h1>
+      <p class="lead">Your dashboard, your history of tests, your circle's leaderboard and your invite link live here.</p>
+      <a class="btn" href="/api/auth/linkedin/start?next=/app">Sign in with LinkedIn</a>
+      <p class="note">Gauge only sees your name, photo and email. It never posts or sends anything.</p>
+    </section>
+
+    <section class="page" id="page-dashboard" hidden>
+      <h1 class="page-title">Dashboard</h1>
+      <div id="dash"></div>
+    </section>
+
+    <section class="page" id="page-history" hidden>
+      <h1 class="page-title">History</h1>
+      <div id="hist"></div>
+    </section>
+
+    <section class="page" id="page-compare" hidden>
+      <h1 class="page-title">Compare</h1>
+      <div id="cmp"></div>
+    </section>
+
+    <section class="page" id="page-invite" hidden>
+      <h1 class="page-title">Invite</h1>
+      <div id="inv"></div>
+    </section>
+
+    <section class="page" id="page-share" hidden>
+      <h1 class="page-title">Share</h1>
+      <div id="shr"></div>
+    </section>
+
+    <section class="page" id="page-extension" hidden>
+      <h1 class="page-title">Extension</h1>
+      <div id="ext"></div>
+    </section>
+
+    <section class="page" id="page-settings" hidden>
+      <h1 class="page-title">Settings</h1>
+      <div id="set"></div>
+    </section>
+  </main>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
