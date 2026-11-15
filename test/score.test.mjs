@@ -29,7 +29,7 @@ test('reproduces the prototype numbers', () => {
 test('missing readings are left out, not counted as zero', () => {
   const r = computeGrade({ ssi: { find: 25, engage: 25 } });
   assert.equal(r.overall, 100);
-  assert.equal(r.notRead.length, 5);
+  assert.equal(r.notRead.length, 6);
   assert.equal(computeGrade({}).overall, null);
 });
 
@@ -40,4 +40,27 @@ test('grade bands', () => {
 test('signals survive the URL fragment round trip', () => {
   assert.deepEqual(decodeSignals(encodeSignals(olivier)), olivier);
   assert.equal(decodeSignals('%%%'), null);
+});
+
+// Real account reading of 2026-11-15 with the groups lever (fill: 100, 100, 100, 74, 31; work: 47, 34, 7).
+test('eight levers: groups joined counts toward filling', () => {
+  const r = computeGrade({
+    salesnav: { inmailLeft: 0, savedAccounts: 10000, savedLeads: 7400 },
+    invitations: { read: 150, under1w: 150, w2plus: 0 },
+    groups: { joined: 31 },
+    ssi: { find: 11.75, engage: 8.5 },
+    lists: { people: { lists: 15, updated30d: 1 }, company: { lists: 0, updated30d: 0 } },
+  });
+  assert.deepEqual(r.levers.filter((l) => l.group === 'fill').map((l) => l.value), [100, 100, 100, 74, 31]);
+  assert.deepEqual(r.levers.filter((l) => l.group === 'work').map((l) => l.value), [47, 34, 7]);
+  assert.equal(r.levers.length, 8);
+  assert.equal(r.fill, 81);
+  assert.equal(r.work, 29);
+  assert.equal(r.overall, 62);
+  assert.equal(r.grade, 'C');
+  assert.equal(r.levers.find((l) => l.id === 'groups').detail, '31 of the 100 LinkedIn allows');
+  // With groups at target 70 like the other fill levers, groups (+4.9) enters the top three; the
+  // owner's reference (lists +5, engage +3, find +3 → 74) assumed no groups move. Open decision.
+  assert.deepEqual(r.moves.map((m) => [m.id, m.gain]), [['groups', 5], ['lists', 5], ['find', 3]]);
+  assert.equal(r.after, 75);
 });

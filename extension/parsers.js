@@ -185,3 +185,14 @@ export function parseSalesNav(text) {
   };
   return Object.values(out).some((v) => v != null) ? out : null;
 }
+
+// linkedin.com/groups/  ("Groups listing / Your groups / Requested / Create group").
+// Each joined group shows a line such as "481,559 members" or "1 member". Only the number of such
+// lines is kept; group names are never returned. `loading` is true while LinkedIn still shows
+// "Loading more results" (the list lazy-loads on scroll).
+export function parseGroups(text) {
+  const t = String(text || '');
+  if (!/your groups|groups listing/i.test(t)) return null;
+  const joined = (t.match(/^\s*\d{1,3}(?:[,.  ]\d{3})*\s+members?\s*$/gim) || []).length;
+  return { joined, loading: /loading more results/i.test(t) };
+}
