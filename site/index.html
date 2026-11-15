@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gauge — How good are you with Sales Navigator?</title>
+<meta name="description" content="Sign in with LinkedIn and get a grade on how efficiently you use Sales Navigator.">
+<link rel="stylesheet" href="/gauge.css">
+</head>
+<body>
+<header><div class="bar">
+  <a class="brand" href="/">
+    <svg viewBox="0 0 32 32" fill="none" stroke="#FE1B04" stroke-width="2.6" stroke-linecap="round"><path d="M5 22a11 11 0 1 1 22 0"/><path d="M16 22l5-8"/></svg>
+    Gauge <small>by Gershon.ai</small>
+  </a>
+  <div id="who" class="who" hidden>
+    <img id="who-pic" alt="" hidden><span id="who-name"></span>
+    <button id="logout" class="btn ghost" type="button">Sign out</button>
+  </div>
+</div></header>
+<main>
+  <div id="error" class="alert" role="alert" hidden></div>
+
+  <section id="signed-out" class="card hero">
+    <h1>How good are you with Sales Navigator?</h1>
+    <p class="lead">Sign in with LinkedIn and get a grade on how efficiently you use it, with one tip for each area.</p>
+    <a class="btn" href="/api/auth/linkedin/start">Sign in with LinkedIn</a>
+    <p class="note">Gauge only sees your name, photo and email. It never posts or sends anything.</p>
+  </section>
+
+  <section id="signed-in" class="card hero" hidden>
+    <span class="pill">Signed in</span>
+    <h1>Welcome, <span id="first-name"></span></h1>
+    <p class="lead">Your sign-in works. Grading opens once the Gauge Chrome extension is published.</p>
+    <a class="btn" href="https://www.gershonconsulting.com/calendar">Book a call with Gershon</a>
+  </section>
+
+  <div class="grid">
+    <div class="card"><h3>Your own numbers only</h3><p>Gauge reads your own activity. It does not collect your leads or contacts.</p></div>
+    <div class="card"><h3>Read-only</h3><p>No automation, no messages sent, nothing running in the background.</p></div>
+    <div class="card"><h3>You click, it grades</h3><p>Nothing happens until you press the button.</p></div>
+  </div>
+</main>
+<footer>© Gershon Consulting LLC · <a href="/privacy">Privacy policy</a></footer>
+<script>
+const ERRORS = {
+  not_configured: 'Sign-in is not switched on yet. Please try again shortly.',
+  cancelled: 'LinkedIn sign-in was cancelled.',
+  state_mismatch: 'That sign-in link expired. Please try again.',
+  token_exchange_failed: 'LinkedIn did not confirm the sign-in. Please try again.',
+  profile_failed: 'LinkedIn did not return your profile. Please try again.',
+};
+const $ = (id) => document.getElementById(id);
+const err = new URLSearchParams(location.search).get('error');
+if (err) {
+  $('error').textContent = ERRORS[err] || 'Sign-in failed. Please try again.';
+  $('error').hidden = false;
+  history.replaceState(null, '', '/');
+}
+fetch('/api/me', { credentials: 'same-origin' })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((me) => {
+    if (!me || !me.signedIn) return;
+    $('signed-out').hidden = true;
+    $('signed-in').hidden = false;
+    $('who').hidden = false;
+    $('who-name').textContent = me.name;
+    $('first-name').textContent = (me.name || '').split(' ')[0] || 'there';
+    if (me.picture) { $('who-pic').src = me.picture; $('who-pic').hidden = false; }
+  })
+  .catch(() => {});
+$('logout').addEventListener('click', () => {
+  fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => location.assign('/'));
+});
+</script>
+</body>
+</html>
