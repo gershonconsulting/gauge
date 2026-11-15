@@ -16,11 +16,19 @@ const STATE_TTL = 600; // 10 minutes
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-function cfg(env) {
+// Only one secret has to be set by hand (LINKEDIN_CLIENT_SECRET). The session signing key is
+// derived from it unless SESSION_SECRET is set explicitly.
+async function cfg(env) {
+  const clientSecret = env.LINKEDIN_CLIENT_SECRET || '';
+  let sessionSecret = env.SESSION_SECRET || '';
+  if (!sessionSecret && clientSecret) {
+    const key = await crypto.subtle.importKey('raw', enc.encode(clientSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    sessionSecret = b64url(await crypto.subtle.sign('HMAC', key, enc.encode('gauge-session-v1')));
+  }
   return {
     clientId: env.LINKEDIN_CLIENT_ID || DEFAULTS.LINKEDIN_CLIENT_ID,
-    clientSecret: env.LINKEDIN_CLIENT_SECRET || '',
-    sessionSecret: env.SESSION_SECRET || '',
+    clientSecret,
+    sessionSecret,
     redirectUri: env.LINKEDIN_REDIRECT_URI || DEFAULTS.REDIRECT_URI,
   };
 }
@@ -84,7 +92,7 @@ function redirect(location, cookieList = []) {
 const fail = (code) => redirect(`/?error=${encodeURIComponent(code)}`, [setCookie(STATE_COOKIE, '', 0)]);
 
 async function start(env) {
-  const c = cfg(env);
+  const c = await cfg(env);
   if (!c.clientSecret || !c.sessionSecret) return redirect('/?error=not_configured');
   const state = b64url(crypto.getRandomValues(new Uint8Array(24)));
   const u = new URL('https://www.linkedin.com/oauth/v2/authorization');
@@ -97,7 +105,7 @@ async function start(env) {
 }
 
 async function callback(request, env) {
-  const c = cfg(env);
+  const c = await cfg(env);
   if (!c.clientSecret || !c.sessionSecret) return fail('not_configured');
   const url = new URL(request.url);
   if (url.searchParams.get('error')) return fail('cancelled');
@@ -147,13 +155,13 @@ export default {
     const url = new URL(request.url);
     const p = url.pathname;
     if (p === '/api/health') {
-      const c = cfg(env);
-      return json({ ok: true, app: 'gauge', linkedinSecretSet: !!c.clientSecret, sessionSecretSet: !!c.sessionSecret });
+      const c = await cfg(env);
+      return json({ ok: true, app: 'gauge', linkedinSecretSet: !!c.clientSecret, sessionKeyReady: !!c.sessionSecret });
     }
     if (p === '/api/auth/linkedin/start') return start(env);
     if (p === '/api/auth/linkedin/callback') return callback(request, env);
     if (p === '/api/me') {
-      const s = await readSession(cookies(request)[SESSION_COOKIE], cfg(env).sessionSecret);
+      const s = await readSession(cookies(request)[SESSION_COOKIE], (await cfg(env)).sessionSecret);
       if (!s) return json({ signedIn: false }, 401);
       return json({ signedIn: true, name: s.name, picture: s.picture, email: s.email });
     }

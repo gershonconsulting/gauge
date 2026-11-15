@@ -11,7 +11,7 @@ First Gershon app to go through Chrome Web Store review.
 - ✅ Tests: `npm test` (7 passing, Node 22)
 - ✅ Signal check on Olivier's own LinkedIn: SSI + 4 parts, pending invitations by age, 90-day content analytics, saved leads/accounts/searches, list freshness, InMail credits are all readable. Grade prototype published as a Claude artifact (his data is NOT in this repo).
 - ❌ Not deployed: gauge.gershon.ai does not load yet (no Pages project / DNS)
-- ❌ Secrets not set in Cloudflare: `LINKEDIN_CLIENT_SECRET`, `SESSION_SECRET` (a person must paste them; never commit them)
+- ❌ Secret not set in Cloudflare: `LINKEDIN_CLIENT_SECRET` (a person must paste it; never commit it). The session key is derived from it, so it is the only secret.
 - ❌ Chrome extension (read-only, click-to-run, linkedin.com + gauge.gershon.ai only) not built
 - ❌ Grade report page in the site (the prototype's layout, fed by the extension)
 - ❌ Chrome Web Store submission (privacy policy final text, permission justifications, listing)
@@ -23,7 +23,7 @@ First Gershon app to go through Chrome Web Store review.
 
 ## Deploy route
 Cloudflare Pages, deploy root = `site/` (`_worker.js` at its root, advanced mode). Project name suggested: `gauge-gershon-ai`.
-After first deploy: add the two secrets (Production), redeploy, attach custom domain `gauge.gershon.ai`, check `/api/health` shows both flags true.
+After first deploy: add the secret (Production), redeploy, attach custom domain `gauge.gershon.ai`, check `/api/health` shows `linkedinSecretSet` and `sessionKeyReady` true.
 
 ## Scoring (prototype, Claude's proposal, not confirmed)
 Five areas, equal weight: Relationships, Outreach, Professional brand, Prospecting, Content. A ≥85, B ≥70, C ≥55, D ≥40.

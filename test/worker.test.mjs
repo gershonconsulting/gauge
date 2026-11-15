@@ -16,6 +16,13 @@ test('start redirects to LinkedIn with sign-in scopes only', async () => {
   assert.equal(u.searchParams.get('state'), cookieOf(res, 'gauge_oauth_state'));
 });
 
+test('session key is derived when only the LinkedIn secret is set', async () => {
+  const e = { LINKEDIN_CLIENT_SECRET: 'only-this', ASSETS: env.ASSETS };
+  assert.equal((await get('/api/auth/linkedin/start', {}, e)).status, 302);
+  const h = await (await get('/api/health', {}, e)).json();
+  assert.equal(h.sessionKeyReady, true);
+});
+
 test('start without secrets reports not_configured', async () => {
   const res = await get('/api/auth/linkedin/start', {}, { ASSETS: env.ASSETS });
   assert.equal(res.headers.get('Location'), '/?error=not_configured');
