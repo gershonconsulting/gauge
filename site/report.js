@@ -112,14 +112,17 @@ async function save(r) {
       return;
     }
     $('who-name').textContent = me.name;
-    await fetch('/api/grade', {
+    const res = await fetch('/api/grade', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         overall: r.overall, fill: r.fill, work: r.work, grade: r.grade,
         levers: Object.fromEntries(r.levers.filter((l) => l.value != null).map((l) => [l.id, l.value])),
+        at: signals?.readAt,
       }),
     });
+    const out = await res.json().catch(() => ({}));
+    if (out.saved) $('saved').hidden = false;
   } catch {}
 }

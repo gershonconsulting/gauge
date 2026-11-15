@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const CONSENT_VERSION = 2; // 2: groups count added (v0.2.0)
 const LABEL = { waiting: 'waiting', reading: 'reading…', done: 'read', missing: 'not found' };
 const ERRORS = {
   signed_out: 'Please sign in to LinkedIn in this browser, then click Grade me again.',
@@ -7,9 +8,11 @@ const ERRORS = {
 };
 
 async function show() {
-  const { consent } = await chrome.storage.local.get('consent');
-  $('consent').hidden = !!consent;
-  $('main').hidden = !consent;
+  // CONSENT_VERSION goes up whenever the list of figures read changes, so the notice is shown again.
+  const { consent, consentVersion } = await chrome.storage.local.get(['consent', 'consentVersion']);
+  const ok = consent && consentVersion >= CONSENT_VERSION;
+  $('consent').hidden = !!ok;
+  $('main').hidden = !ok;
   render((await chrome.storage.session.get('progress')).progress);
 }
 
@@ -32,7 +35,7 @@ function render(p) {
 }
 
 $('agree').addEventListener('click', async () => {
-  await chrome.storage.local.set({ consent: new Date().toISOString() });
+  await chrome.storage.local.set({ consent: new Date().toISOString(), consentVersion: CONSENT_VERSION });
   show();
 });
 $('revoke').addEventListener('click', async () => {

@@ -13,7 +13,7 @@
 Gauge <small>by Gershon.ai</small></a></div></header>
 <main><div class="card prose">
 <h1>Privacy policy</h1>
-<p class="note">Last updated November 14, 2026. This policy covers the website gauge.gershon.ai and the Gauge Chrome extension.</p>
+<p class="note">Last updated November 15, 2026. This policy covers the website gauge.gershon.ai and the Gauge Chrome extension.</p>
 
 <h2>Who we are</h2>
 <p>Gauge is operated by Gershon Consulting LLC, a Delaware (USA) company, which is the controller of the data described here. Contact for anything about privacy: <a href="mailto:olivier@gershonconsulting.com">olivier@gershonconsulting.com</a>.</p>
@@ -23,7 +23,7 @@ Gauge <small>by Gershon.ai</small></a></div></header>
 
 <h2>What the website collects</h2>
 <p>When you choose "Sign in with LinkedIn", LinkedIn sends Gauge your <strong>name, profile photo address, email address and LinkedIn member identifier</strong>. Gauge asks LinkedIn for nothing else and never asks for permission to post, comment, react or message on your behalf. The LinkedIn access token is used once to read those four items and is then discarded; it is not stored.</p>
-<p>Gauge keeps those items in one signed, secure cookie (<code>gauge_session</code>) in your browser for up to 30 days so you stay signed in. A second cookie (<code>gauge_oauth_state</code>) lasts up to 10 minutes during sign-in to protect it against forgery, and a third (<code>gauge_next</code>), also up to 10 minutes, remembers which Gauge page to return you to. Gauge uses no advertising cookies, no analytics cookies and no third-party trackers.</p>
+<p>Gauge keeps those items in one signed, secure cookie (<code>gauge_session</code>) in your browser for up to 30 days so you stay signed in. A second cookie (<code>gauge_oauth_state</code>) lasts up to 10 minutes during sign-in to protect it against forgery, and a third (<code>gauge_next</code>), also up to 10 minutes, remembers which Gauge page to return you to. If you open Gauge through someone's invite link, a fourth cookie (<code>gauge_ref</code>) keeps their invite code for up to 30 days so that, if you sign in, Gauge can record who invited you; it is deleted when you sign in. Gauge uses no advertising cookies, no analytics cookies and no third-party trackers.</p>
 
 <h2>What the Chrome extension collects</h2>
 <p>The extension does nothing until you click "Grade me". When you click, it opens your own LinkedIn and Sales Navigator pages one at a time in a background tab of your signed-in browser, reads <strong>figures about your own activity only</strong>, and closes the tab. The rest of each page's text is looked at in memory only to find these figures, and is discarded at once:</p>
@@ -31,13 +31,27 @@ Gauge <small>by Gershon.ai</small></a></div></header>
 <li>your Social Selling Index and its four parts, and your industry and network rank;</li>
 <li>the number and age of your pending invitations;</li>
 <li>your content figures: post impressions, engagements, followers, profile viewers and search appearances;</li>
+<li>how many LinkedIn groups you belong to (the count only, never the names of the groups);</li>
 <li>counts of your saved leads and saved accounts, how many lead and account lists you have and how many were updated in the last 30 days, and your remaining InMail credits.</li>
 </ul>
+<p>On gauge.gershon.ai only, the extension also marks the page with its own <strong>version number</strong>, so the site can tell you whether the extension is installed and up to date. It reads nothing on that site.</p>
 <p>These are counts, dates and scores. The extension then opens your report at gauge.gershon.ai over an encrypted connection (HTTPS). The figures travel in the part of the web address after the "#", which browsers do not send to the server: your grade is calculated inside your own browser tab, and the figures are removed from the address bar as soon as the report opens.</p>
 <p>The extension <strong>does not</strong> read or collect: the names or details of your leads, contacts or connections; the content of your messages or InMails; your password or LinkedIn session cookies; your browsing history; or anything on any website other than linkedin.com. It does not send invitations or messages, does not post, does not click anything on your behalf, and does not run in the background.</p>
 
 <h2>What Gauge stores</h2>
-<p>For each graded account Gauge stores: your name, email address, LinkedIn member identifier, your overall score and grade, your "filling" and "working" scores and the percentage for each lever, and the date of the grading. This happens only if you are signed in when your report opens. The individual figures listed above never reach Gauge's servers and are not kept.</p>
+<p>Gauge stores data only if you are signed in. For each member it stores:</p>
+<ul>
+<li>your LinkedIn member identifier, name, profile photo address and email address, from sign-in;</li>
+<li>for each test (up to your last 100): the date, your overall score and grade, your "filling" and "working" scores and the percentage for each lever;</li>
+<li>your setting "Show my name and photo on leaderboards" (off unless you turn it on);</li>
+<li>your personal invite code, who invited you (if you came through an invite link) and the people who signed in through your link;</li>
+<li>a count of tests saved today, used to limit saves to 20 a day, kept for 2 days.</li>
+</ul>
+<p>Gauge also keeps one anonymous total for everyone: the number of members with a test and how many fall in each 5-point score band. It is used to show "You are ahead of N% of Gauge users" and contains no names.</p>
+<p>The individual LinkedIn figures listed above never reach Gauge's servers and are not kept.</p>
+
+<h2>What other members see</h2>
+<p>The "Compare" page shows a leaderboard of your circle: you, the person who invited you and the people you invited. Other members see your score and grade there. They see your <strong>name and photo only if you turn on "Show my name and photo on leaderboards"</strong> in Settings; otherwise you appear as "Anonymous member". Your email address is never shown to other members.</p>
 
 <h2>How Gauge uses your data</h2>
 <ul>
@@ -60,10 +74,10 @@ Gauge <small>by Gershon.ai</small></a></div></header>
 <p>The use of information received by the Gauge extension adheres to the <a href="https://developer.chrome.com/docs/webstore/program-policies/" rel="noopener">Chrome Web Store User Data Policy</a>, including the Limited Use requirements. In particular, nobody at Gershon Consulting reads your individual data unless you give explicit consent (for example, when you ask for help), it is needed for security purposes or to comply with the law, or the data has been aggregated and anonymised for internal operations.</p>
 
 <h2>How long data is kept</h2>
-<p>The sign-in cookie expires after 30 days or when you sign out. Stored grades are kept until you ask for deletion, and are deleted automatically after 24 months without a new grading.</p>
+<p>The sign-in cookie expires after 30 days or when you sign out. Stored data is kept until you delete it, and is deleted automatically after 24 months without a new test.</p>
 
 <h2>Your choices and rights</h2>
-<p>You can sign out at any time, remove the extension at any time (which stops all collection), and ask us to show, correct, export or delete the data held about you by writing to <a href="mailto:olivier@gershonconsulting.com">olivier@gershonconsulting.com</a>. We answer within 30 days. If you are in the European Economic Area, the United Kingdom or Switzerland, these are your rights under the GDPR; you may also object to or restrict processing, and complain to your local data protection authority. If you are in California, you have the rights to know, delete and correct under the CCPA; Gauge does not sell or share personal information as those terms are defined there, and will not treat you differently for using your rights.</p>
+<p>You can delete everything Gauge holds about you yourself, at any time: open <a href="/app#settings">Settings</a> in the Gauge app and choose "Delete my data". This deletes your profile, every saved test, your settings, your invite code and invite links in both directions, and your place in the anonymous total, then signs you out. You can sign out at any time, remove the extension at any time (which stops all collection), and ask us to show, correct, export or delete the data held about you by writing to <a href="mailto:olivier@gershonconsulting.com">olivier@gershonconsulting.com</a>. We answer within 30 days. If you are in the European Economic Area, the United Kingdom or Switzerland, these are your rights under the GDPR; you may also object to or restrict processing, and complain to your local data protection authority. If you are in California, you have the rights to know, delete and correct under the CCPA; Gauge does not sell or share personal information as those terms are defined there, and will not treat you differently for using your rights.</p>
 <p>Legal bases under the GDPR: your consent (signing in and clicking "Grade me"; you can withdraw it at any time), and our legitimate interest in keeping the service secure.</p>
 
 <h2>Where data is processed</h2>
