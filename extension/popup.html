@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Gauge</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { width: 320px; padding: 14px; }
+    .card { padding: 16px; }
+    .row { display: flex; gap: 8px; margin-top: 12px; }
+    .row .btn { flex: 1; }
+    #progress { margin-top: 12px; }
+    #progress .bar { margin: 6px 0; }
+    .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .brand img { width: 24px; height: 24px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><img src="icons/icon48.png" alt=""><h1>Gauge</h1></div>
+    <p class="muted" style="margin:0">How good are you with Sales Navigator? Gauge opens your own LinkedIn stats pages in a tab, reads the numbers, and shows how much of your Sales Navigator capacity you use. Nothing is sent anywhere.</p>
+    <div class="row"><button id="go" class="btn btn-primary">Grade me</button></div>
+    <div id="progress" class="hidden">
+      <div id="plabel" class="muted"></div>
+      <div class="bar"><span id="pbar" style="width:0%"></span></div>
+      <button id="cancel" class="btn btn-ghost" style="width:100%">Cancel</button>
+    </div>
+    <p id="msg" class="muted hidden"></p>
+    <div class="row"><button id="report" class="btn btn-ghost hidden">Open my report</button></div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

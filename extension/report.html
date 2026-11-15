@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Sales Navigator capacity — Gauge</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 16px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    header img { width: 32px; height: 32px; }
+    .hero { display: grid; grid-template-columns: 180px 1fr; gap: 20px; align-items: center; }
+    .dial { position: relative; width: 180px; height: 120px; }
+    .dial svg { width: 180px; height: 120px; }
+    .dial .val { position: absolute; left: 0; right: 0; top: 52px; text-align: center; }
+    .dial .num { font-size: 34px; font-weight: 700; line-height: 1; }
+    .letter { display: inline-block; font-size: 28px; font-weight: 700; color: var(--red-dark); background: var(--red-tint);
+      border-radius: 10px; padding: 2px 12px; margin-bottom: 6px; }
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .tile-num { font-size: 30px; font-weight: 700; color: var(--red-dark); line-height: 1.2; }
+    .group { padding: 12px 0; border-top: 1px solid var(--border); }
+    .group:first-of-type { border-top: 0; }
+    .moves { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 10px; }
+    .moves .pts { color: var(--red-dark); font-weight: 700; }
+    .area { padding: 14px 0; border-top: 1px solid var(--border); }
+    .area:first-of-type { border-top: 0; }
+    .area-head { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; }
+    .evidence { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .evidence li { font-size: 13px; color: var(--muted); }
+    .evidence b { color: var(--text); font-weight: 600; }
+    ul.plain { margin: 6px 0 0; padding-left: 18px; }
+    .cta { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    @media (max-width: 520px) {
+      .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+      .tiles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header><img src="icons/icon48.png" alt=""><h1>Your Sales Navigator capacity</h1></header>
+
+    <section id="empty" class="card hidden">
+      <h2>No report yet</h2>
+      <p class="muted">Click the Gauge icon in your toolbar and press <b>Grade me</b>.</p>
+    </section>
+
+    <section id="running" class="card hidden">
+      <h2>Reading your stats…</h2>
+      <p id="rlabel" class="muted"></p>
+      <div class="bar"><span id="rbar" style="width:0%"></span></div>
+      <p><button id="cancel" class="btn btn-ghost">Cancel</button></p>
+    </section>
+
+    <section id="hero" class="card hero hidden">
+      <div class="dial" aria-hidden="true">
+        <svg viewBox="0 0 180 120">
+          <path d="M 20 100 A 70 70 0 0 1 160 100" fill="none" stroke="#f0f1f3" stroke-width="14" stroke-linecap="round"/>
+          <path id="arc" d="M 20 100 A 70 70 0 0 1 160 100" fill="none" stroke="#FE1B04" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/>
+        </svg>
+        <div class="val"><div class="num" id="overall">–</div><div class="muted">of capacity</div></div>
+      </div>
+      <div>
+        <div class="letter" id="letter">–</div>
+        <h2 id="headline" style="margin:0"></h2>
+        <p id="summary" class="muted" style="margin:6px 0 0"></p>
+        <p class="muted" id="readAt" style="margin:6px 0 0"></p>
+      </div>
+    </section>
+
+    <section id="tiles" class="tiles hidden">
+      <div class="card tile"><div class="muted">Filling it</div><div class="tile-num" id="filling">–</div><div class="muted">credits, invitations, saved accounts and leads</div></div>
+      <div class="card tile"><div class="muted">Working it</div><div class="tile-num" id="working">–</div><div class="muted">finding people, engaging, keeping lists fresh</div></div>
+    </section>
+
+    <section id="levers" class="card hidden"><h2>Seven levers</h2><div id="leverlist"></div></section>
+
+    <section id="moves" class="card hidden"><h2>Moves that add the most</h2><ol id="movelist" class="moves"></ol></section>
+
+    <section id="evidence" class="card hidden"><h2>Evidence</h2><div id="evidencelist"></div></section>
+
+    <section id="missing" class="card hidden">
+      <h2>Not measured</h2>
+      <ul class="plain" id="missinglist"></ul>
+      <p class="muted">The grade uses only what was read. Levers that could not be read are left out of the percentage.</p>
+    </section>
+
+    <section class="card cta">
+      <div><h3>Want a higher grade?</h3><p class="muted" style="margin:0">Gershon Consulting runs Sales Navigator outreach for B2B teams entering the US.</p></div>
+      <a id="book" class="btn btn-primary" target="_blank" rel="noopener">Book a call</a>
+    </section>
+
+    <p class="muted">Gauge read these numbers from your own LinkedIn pages in your browser. They are stored only on this computer and were not sent anywhere.</p>
+  </main>
+  <script type="module" src="report.js"></script>
+</body>
+</html>
