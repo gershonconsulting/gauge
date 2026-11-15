@@ -10,6 +10,8 @@ const DEFAULTS = {
 };
 const SESSION_COOKIE = 'gauge_session';
 const STATE_COOKIE = 'gauge_oauth_state';
+const NEXT_COOKIE = 'gauge_next';
+const NEXT_OK = new Set(['/', '/report']);
 const SESSION_TTL = 60 * 60 * 24 * 30; // 30 days
 const STATE_TTL = 600; // 10 minutes
 
@@ -91,7 +93,7 @@ function redirect(location, cookieList = []) {
 }
 const fail = (code) => redirect(`/?error=${encodeURIComponent(code)}`, [setCookie(STATE_COOKIE, '', 0)]);
 
-async function start(env) {
+async function start(request, env) {
   const c = await cfg(env);
   if (!c.clientSecret || !c.sessionSecret) return redirect('/?error=not_configured');
   const state = b64url(crypto.getRandomValues(new Uint8Array(24)));
@@ -101,7 +103,10 @@ async function start(env) {
   u.searchParams.set('redirect_uri', c.redirectUri);
   u.searchParams.set('state', state);
   u.searchParams.set('scope', DEFAULTS.SCOPE);
-  return redirect(u.toString(), [setCookie(STATE_COOKIE, state, STATE_TTL)]);
+  const next = new URL(request.url).searchParams.get('next');
+  const list = [setCookie(STATE_COOKIE, state, STATE_TTL)];
+  if (NEXT_OK.has(next)) list.push(setCookie(NEXT_COOKIE, next, STATE_TTL));
+  return redirect(u.toString(), list);
 }
 
 async function callback(request, env) {
@@ -147,7 +152,41 @@ async function callback(request, env) {
     },
     c.sessionSecret,
   );
-  return redirect('/', [setCookie(SESSION_COOKIE, session, SESSION_TTL), setCookie(STATE_COOKIE, '', 0)]);
+  const next = cookies(request)[NEXT_COOKIE];
+  return redirect(NEXT_OK.has(next) ? next : '/', [
+    setCookie(SESSION_COOKIE, session, SESSION_TTL),
+    setCookie(STATE_COOKIE, '', 0),
+    setCookie(NEXT_COOKIE, '', 0),
+  ]);
+}
+
+// Save the user's scores (never the raw LinkedIn figures). Stored only when a KV namespace is bound
+// as GAUGE_KV; the privacy policy lists exactly these fields.
+const score = (v) => (Number.isInteger(v) && v >= 0 && v <= 100 ? v : null);
+const LEVER_IDS = ['inmail', 'invites', 'savedAccounts', 'savedLeads', 'find', 'engage', 'lists'];
+export async function saveGrade(request, env) {
+  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+  const s = await readSession(cookies(request)[SESSION_COOKIE], (await cfg(env)).sessionSecret);
+  if (!s) return json({ error: 'signed_out' }, 401);
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const overall = score(body?.overall);
+  if (overall == null || !/^[A-F]\+?$/.test(body?.grade || '')) return json({ error: 'bad_request' }, 400);
+  const levers = {};
+  for (const id of LEVER_IDS) if (score(body.levers?.[id]) != null) levers[id] = body.levers[id];
+  const record = {
+    memberId: s.sub, name: s.name, email: s.email,
+    overall, fill: score(body.fill), work: score(body.work), grade: body.grade, levers,
+    at: new Date().toISOString(),
+  };
+  if (!env.GAUGE_KV) return json({ saved: false, reason: 'storage_not_configured' });
+  await env.GAUGE_KV.put(`grade:${s.sub}:${record.at}`, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 730 });
+  await env.GAUGE_KV.put(`latest:${s.sub}`, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 730 });
+  return json({ saved: true });
 }
 
 export default {
@@ -158,13 +197,14 @@ export default {
       const c = await cfg(env);
       return json({ ok: true, app: 'gauge', linkedinSecretSet: !!c.clientSecret, sessionKeyReady: !!c.sessionSecret });
     }
-    if (p === '/api/auth/linkedin/start') return start(env);
+    if (p === '/api/auth/linkedin/start') return start(request, env);
     if (p === '/api/auth/linkedin/callback') return callback(request, env);
     if (p === '/api/me') {
       const s = await readSession(cookies(request)[SESSION_COOKIE], (await cfg(env)).sessionSecret);
       if (!s) return json({ signedIn: false }, 401);
       return json({ signedIn: true, name: s.name, picture: s.picture, email: s.email });
     }
+    if (p === '/api/grade') return saveGrade(request, env);
     if (p === '/api/auth/logout') {
       if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
       return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SESSION_COOKIE, '', 0) });

@@ -23,21 +23,21 @@ Gauge <small>by Gershon.ai</small></a></div></header>
 
 <h2>What the website collects</h2>
 <p>When you choose "Sign in with LinkedIn", LinkedIn sends Gauge your <strong>name, profile photo address, email address and LinkedIn member identifier</strong>. Gauge asks LinkedIn for nothing else and never asks for permission to post, comment, react or message on your behalf. The LinkedIn access token is used once to read those four items and is then discarded; it is not stored.</p>
-<p>Gauge keeps those items in one signed, secure cookie (<code>gauge_session</code>) in your browser for up to 30 days so you stay signed in. A second cookie (<code>gauge_oauth_state</code>) lasts up to 10 minutes during sign-in to protect it against forgery. Gauge uses no advertising cookies, no analytics cookies and no third-party trackers.</p>
+<p>Gauge keeps those items in one signed, secure cookie (<code>gauge_session</code>) in your browser for up to 30 days so you stay signed in. A second cookie (<code>gauge_oauth_state</code>) lasts up to 10 minutes during sign-in to protect it against forgery, and a third (<code>gauge_next</code>), also up to 10 minutes, remembers which Gauge page to return you to. Gauge uses no advertising cookies, no analytics cookies and no third-party trackers.</p>
 
 <h2>What the Chrome extension collects</h2>
-<p>The extension does nothing until you click "Grade me". When you click, it reads, from LinkedIn and Sales Navigator pages open in your own signed-in browser, <strong>figures about your own activity only</strong>:</p>
+<p>The extension does nothing until you click "Grade me". When you click, it opens your own LinkedIn and Sales Navigator pages one at a time in a background tab of your signed-in browser, reads <strong>figures about your own activity only</strong>, and closes the tab. The rest of each page's text is looked at in memory only to find these figures, and is discarded at once:</p>
 <ul>
 <li>your Social Selling Index and its four parts, and your industry and network rank;</li>
 <li>the number and age of your pending invitations;</li>
-<li>your content figures: impressions, engagements, number of posts and comments, followers, profile viewers and search appearances;</li>
-<li>counts of your saved leads, saved accounts and saved searches, when your lists were last updated, and your remaining InMail credits.</li>
+<li>your content figures: post impressions, engagements, followers, profile viewers and search appearances;</li>
+<li>counts of your saved leads and saved accounts, how many lead and account lists you have and how many were updated in the last 30 days, and your remaining InMail credits.</li>
 </ul>
-<p>These are counts, dates and scores. The extension sends them over an encrypted connection (HTTPS) to gauge.gershon.ai, which calculates your grade and shows it to you.</p>
-<p>The extension <strong>does not</strong> read or collect: the names or details of your leads, contacts or connections; the content of your messages or InMails; your password or LinkedIn session cookies; your browsing history; or anything on any website other than linkedin.com and gauge.gershon.ai. It does not send invitations or messages, does not post, does not click anything on your behalf, and does not run in the background.</p>
+<p>These are counts, dates and scores. The extension then opens your report at gauge.gershon.ai over an encrypted connection (HTTPS). The figures travel in the part of the web address after the "#", which browsers do not send to the server: your grade is calculated inside your own browser tab, and the figures are removed from the address bar as soon as the report opens.</p>
+<p>The extension <strong>does not</strong> read or collect: the names or details of your leads, contacts or connections; the content of your messages or InMails; your password or LinkedIn session cookies; your browsing history; or anything on any website other than linkedin.com. It does not send invitations or messages, does not post, does not click anything on your behalf, and does not run in the background.</p>
 
 <h2>What Gauge stores</h2>
-<p>For each graded account Gauge stores: your name, email address, LinkedIn member identifier, your overall score and grade, your five area scores, and the date of the grading. The individual figures listed above are used to calculate the grade and are not kept after that.</p>
+<p>For each graded account Gauge stores: your name, email address, LinkedIn member identifier, your overall score and grade, your "filling" and "working" scores and the percentage for each lever, and the date of the grading. This happens only if you are signed in when your report opens. The individual figures listed above never reach Gauge's servers and are not kept.</p>
 
 <h2>How Gauge uses your data</h2>
 <ul>

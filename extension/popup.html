@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <svg viewBox="0 0 32 32" fill="none" stroke="#FE1B04" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 22a11 11 0 1 1 22 0"/><path d="M16 22l5-8"/></svg>
+  <b>Gauge</b><small>by Gershon.ai</small>
+</header>
+
+<section id="consent" hidden>
+  <h1>Before your first grade</h1>
+  <p>When you click <b>Grade me</b>, Gauge opens your own LinkedIn pages in a background tab, one at a time, and reads these figures:</p>
+  <ul>
+    <li>Your Social Selling Index and its four parts</li>
+    <li>How many invitations are pending, and how old they are</li>
+    <li>Your post impressions, engagements, followers and profile viewers</li>
+    <li>How many Sales Navigator lists you have and when they were updated</li>
+    <li>Your InMail credits and saved leads and accounts</li>
+  </ul>
+  <p>It does not keep names of your leads or contacts, does not read your messages, and never clicks, sends or posts anything. Your report opens at gauge.gershon.ai and the grade is worked out in that tab.</p>
+  <p><a href="https://gauge.gershon.ai/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
+  <button id="agree" class="btn" type="button">I agree</button>
+</section>
+
+<section id="main" hidden>
+  <h1>How much of your Sales Navigator do you use?</h1>
+  <p class="muted">Make sure you are signed in to LinkedIn in this browser. Reading takes about two minutes. You can keep working meanwhile.</p>
+  <button id="grade" class="btn" type="button">Grade me</button>
+  <ol id="steps"></ol>
+  <p id="msg" class="msg" role="status"></p>
+  <p class="foot"><a href="https://gauge.gershon.ai/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://gauge.gershon.ai/support" target="_blank" rel="noopener">Support</a> · <button id="revoke" class="link" type="button">Withdraw consent</button></p>
+</section>
+<script src="popup.js" type="module"></script>
+</body>
+</html>

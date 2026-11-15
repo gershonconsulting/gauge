@@ -79,3 +79,27 @@ test('health exposes flags, never values; logout is POST only; assets fall throu
   assert.equal(await (await get('/')).text(), 'asset');
   assert.equal((await get('/api/nope')).status, 404);
 });
+
+test('sign-in can return to the report, and only to allowed pages', async () => {
+  const ok = await get('/api/auth/linkedin/start?next=/report');
+  assert.equal(cookieOf(ok, 'gauge_next'), '/report');
+  const bad = await get('/api/auth/linkedin/start?next=https://evil.example');
+  assert.equal(cookieOf(bad, 'gauge_next'), undefined);
+});
+
+test('/api/grade stores scores only, for a signed-in user', async () => {
+  const store = new Map();
+  const e = { ...env, GAUGE_KV: { put: async (k, v) => store.set(k, v) } };
+  const post = (body, cookie) => worker.fetch(new Request('https://gauge.gershon.ai/api/grade', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(body),
+  }), e);
+  assert.equal((await post({ overall: 66, grade: 'C+' })).status, 401);
+  const token = await signSession({ sub: 'abc', name: 'Test', email: 't@x.com', exp: Math.floor(Date.now() / 1000) + 60 }, 'test-session');
+  const c = 'gauge_session=' + token;
+  assert.equal((await post({ overall: 900, grade: 'C' }, c)).status, 400);
+  const res = await post({ overall: 66, fill: 94, work: 29, grade: 'C+', levers: { lists: 7, evil: 5 }, raw: 'x' }, c);
+  assert.deepEqual(await res.json(), { saved: true });
+  const rec = JSON.parse(store.get('latest:abc'));
+  assert.deepEqual(Object.keys(rec).sort(), ['at', 'email', 'fill', 'grade', 'levers', 'memberId', 'name', 'overall', 'work']);
+  assert.deepEqual(rec.levers, { lists: 7 });
+});

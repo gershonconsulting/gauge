@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your Gauge report — Sales Navigator capacity</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/gauge.css">
+<link rel="stylesheet" href="/report.css">
+</head>
+<body>
+<header><div class="bar">
+  <a class="brand" href="/">
+    <svg viewBox="0 0 32 32" fill="none" stroke="#FE1B04" stroke-width="2.6" stroke-linecap="round"><path d="M5 22a11 11 0 1 1 22 0"/><path d="M16 22l5-8"/></svg>
+    Gauge <small>by Gershon.ai</small>
+  </a>
+  <div class="who"><span id="who-name"></span><span id="read-at" class="chip grey"></span></div>
+</div></header>
+<main class="report">
+  <section id="empty" class="card hero" hidden>
+    <h1>No reading yet</h1>
+    <p class="lead">Install the Gauge extension, open it from your browser toolbar and click <b>Grade me</b>. Your report opens here.</p>
+  </section>
+
+  <div id="report" hidden>
+    <div id="save" class="alert soft" hidden>
+      <span>Sign in with LinkedIn to keep this grade and compare next month.</span>
+      <a class="btn small" href="/api/auth/linkedin/start?next=/report">Sign in with LinkedIn</a>
+    </div>
+
+    <section class="card rhero">
+      <div class="dial"><svg viewBox="0 0 220 138" role="img" id="dial">
+        <path d="M20 115a90 90 0 0 1 180 0" fill="none" stroke="#eef0f2" stroke-width="16" stroke-linecap="round"/>
+        <path id="dial-fill" d="M20 115a90 90 0 0 1 180 0" fill="none" stroke="#FE1B04" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 400"/>
+        <text x="110" y="102" text-anchor="middle" class="pct" id="dial-pct"></text>
+        <text x="110" y="128" text-anchor="middle" class="outof" id="dial-sub"></text>
+      </svg></div>
+      <div>
+        <h1 id="headline"></h1>
+        <p id="verdict" class="muted"></p>
+        <div class="split">
+          <div><b id="fill" class="num"></b><span>Filling it: InMails, invitations, saved leads and accounts</span></div>
+          <div><b id="work" class="num"></b><span>Working it: searches, engaging with prospects, lists</span></div>
+        </div>
+        <div id="chips" class="chips"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Capacity, lever by lever</h2>
+      <p class="muted">Each bar is what you use against what Sales Navigator gives you</p>
+      <div id="levers"></div>
+    </section>
+
+    <section class="card" id="moves-card">
+      <h2>Three moves that add the most</h2>
+      <div id="moves" class="moves"></div>
+      <p class="path" id="path"></p>
+    </section>
+
+    <section class="card" id="kpi-card">
+      <h2>What your effort returns</h2>
+      <div id="kpis" class="kpis"></div>
+    </section>
+
+    <section class="card" id="missing-card" hidden>
+      <h2>Not read this time</h2>
+      <p class="muted" id="missing"></p>
+    </section>
+
+    <section class="card cta">
+      <div><h2>Want the rest of your Sales Navigator working for you?</h2><p>Gershon Consulting runs Sales Navigator outreach for companies entering the US market.</p></div>
+      <a class="btn" href="https://www.gershonconsulting.com/calendar">Book a call</a>
+    </section>
+    <p class="muted small">The model behind the percentage: the average of the levers above, each from 0 to 100%. Grade bands: A from 85%, B from 70%, C from 55%, D from 40%. Your figures stay in this browser tab; only your scores are saved, and only if you sign in.</p>
+  </div>
+</main>
+<footer>© Gershon Consulting LLC · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a><br>Gauge is not affiliated with or endorsed by LinkedIn Corporation.</footer>
+<script type="module" src="/report.js"></script>
+</body>
+</html>
