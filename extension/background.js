@@ -9,12 +9,12 @@ const LI = 'https://www.linkedin.com';
 
 export const PAGES = [
   { key: 'ssi', label: 'Social Selling Index', url: `${LI}/sales/ssi`, parse: parseSsi },
-  { key: 'invitations', label: 'Pending invitations', url: `${LI}/mynetwork/invitation-manager/sent/`, parse: parseInvitations, scroll: 12 },
+  { key: 'invitations', label: 'Pending invitations', url: `${LI}/mynetwork/invitation-manager/sent/`, parse: parseInvitations, scroll: 50 },
   { key: 'dashboard', label: 'Your dashboard', url: `${LI}/dashboard/`, parse: parseDashboard },
   { key: 'content', label: 'Post results (90 days)', url: `${LI}/analytics/creator/content/?metricType=IMPRESSIONS&timeRange=past_90_days`, parse: parseContent },
   { key: 'listsPeople', label: 'Lead lists', url: `${LI}/sales/lists/people`, parse: (t) => parseLists(t), scroll: 4 },
   { key: 'listsCompany', label: 'Account lists', url: `${LI}/sales/lists/company`, parse: (t) => parseLists(t), scroll: 4 },
-  { key: 'salesnav', label: 'Sales Navigator home', url: `${LI}/sales/home`, parse: parseSalesNav },
+  { key: 'salesnav', label: 'InMail credits', url: `${LI}/sales/settings`, parse: parseSalesNav },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -25,14 +25,27 @@ async function setProgress(p) {
 }
 
 
+// A frozen LinkedIn page (seen live on /sales/ssi) must not hang the whole run.
 async function pageText(tabId, scroll) {
+  const timeout = new Promise((r) => setTimeout(() => r({ text: '', url: '', frozen: true }), 60000));
+  return Promise.race([readOnce(tabId, scroll), timeout]);
+}
+
+async function readOnce(tabId, scroll) {
   const [res] = await chrome.scripting.executeScript({
     target: { tabId },
     args: [scroll || 0],
     func: async (times) => {
-      for (let i = 0; i < times; i++) {
+      // LinkedIn lists scroll inside <main>, not the window: scroll both, stop when nothing new loads.
+      let same = 0;
+      let len = document.body ? document.body.innerText.length : 0;
+      for (let i = 0; i < times && same < 3; i++) {
         window.scrollTo(0, document.body.scrollHeight);
-        await new Promise((r) => setTimeout(r, 700));
+        for (const el of [document.scrollingElement, document.querySelector('main')]) if (el) el.scrollTop = el.scrollHeight;
+        await new Promise((r) => setTimeout(r, 800));
+        const now = document.body.innerText.length;
+        same = now === len ? same + 1 : 0;
+        len = now;
       }
       return { text: document.body ? document.body.innerText : '', url: location.href };
     },
@@ -60,11 +73,10 @@ async function readPage(page) {
     await waitForLoad(tab.id);
     let last = null;
     let lastJson = '';
-    const deadline = Date.now() + 25000;
-    let first = true;
+    const deadline = Date.now() + 75000; // the invitations page needs ~40 s of scrolling
     while (Date.now() < deadline) {
-      const { text, url } = await pageText(tab.id, first ? page.scroll : 0);
-      first = false;
+      const { text, url, frozen } = await pageText(tab.id, page.scroll);
+      if (frozen) break;
       if (/\/(login|uas\/login|checkpoint|authwall)/.test(url)) return { error: 'signed_out' };
       if (/\/premium\//.test(url)) return { error: 'no_sales_nav' };
       const parsed = page.parse(text);
@@ -110,7 +122,11 @@ async function grade() {
       dashboard: out.dashboard,
       content: out.content,
       lists: { people: out.listsPeople, company: out.listsCompany },
-      salesnav: mergeSalesNav(out.salesnav, null),
+      salesnav: {
+        inmailLeft: out.salesnav?.inmailLeft ?? null,
+        savedLeads: out.listsPeople?.savedTotal ?? out.salesnav?.savedLeads ?? null,
+        savedAccounts: out.listsCompany?.savedTotal ?? out.salesnav?.savedAccounts ?? null,
+      },
     };
     const d = encode(signals);
     await chrome.storage.local.set({ lastRead: signals.readAt });
@@ -120,12 +136,6 @@ async function grade() {
   } finally {
     running = false;
   }
-}
-
-function mergeSalesNav(a, b) {
-  if (!a && !b) return null;
-  const pick = (k) => a?.[k] ?? b?.[k] ?? null;
-  return { inmailLeft: pick('inmailLeft'), savedLeads: pick('savedLeads'), savedAccounts: pick('savedAccounts') };
 }
 
 function encode(obj) {

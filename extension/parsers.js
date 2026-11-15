@@ -41,7 +41,10 @@ export function parseSsi(text) {
     relationships: clampPart(numberAfter(text, 'build relationships', 60)),
   };
   const known = Object.values(parts).filter((v) => v != null);
-  let total = numberAfter(text, 'social selling index', 120);
+  // Live page (2026-11-14): "…Remaining points 37 \n 63 \n out of 100". The heading is followed by "1 of 1",
+  // so the total is read from the number just before "out of 100".
+  const tm = text.match(/(\d{1,3}(?:\.\d+)?)\s*\n?\s*out of 100/i);
+  let total = tm ? Math.round(Number(tm[1])) : null;
   if (total == null || total > 100) total = null;
   if (total == null && known.length === 4) total = Math.round(known.reduce((a, b) => a + b, 0));
   const industryTop = topPercent(text, 'industry');
@@ -76,8 +79,9 @@ export function parseInvitations(text) {
     else if (days < 14) ages.w1++;
     else ages.w2plus++;
   }
-  const pending =
-    numberAfter(text, 'people (', 12) ?? numberAfter(text, 'sent (', 12) ?? numberAfter(text, 'pending invitations', 30);
+  // Live page: "Sent \n People 484" (older layouts: "People (484)").
+  const pm = text.match(/\bpeople\s*\(?\s*(\d[\d,]*)\s*\)?/i) || text.match(/\bsent\s*\(\s*(\d[\d,]*)\s*\)/i);
+  const pending = pm ? toNumber(pm[1]) : null;
   if (!read && pending == null) return null;
   return { pending: pending ?? read, read, ...ages };
 }
@@ -95,8 +99,11 @@ export function parseDashboard(text) {
 
 // linkedin.com/analytics/creator/content/  — engagements over the period shown.
 export function parseContent(text) {
-  const impressions = numberBefore(text, 'impressions', 40);
-  const engagements = numberBefore(text, 'engagements', 40);
+  // Live page: "90 days | Impressions | 14,616 | Impressions | 279% … Engagement | 38 | Social engagements".
+  const im = text.match(/impressions\s*\n?\s*(\d[\d,]*)\b/i);
+  const em = text.match(/(\d[\d,]*)\s*\n?\s*social engagements/i);
+  const impressions = im ? toNumber(im[1]) : null;
+  const engagements = em ? toNumber(em[1]) : numberBefore(text, 'engagements', 40);
   if (impressions == null && engagements == null) return null;
   return { impressions, engagements };
 }
@@ -126,6 +133,26 @@ const DATE_RE =
 // Each custom list row shows a size ("123 leads"/"45 accounts") and a last-updated date.
 // Only counts and dates are kept; list names are never returned.
 export function parseLists(text, now = new Date()) {
+  // Live layout (2026-11-14): a table "Name | Leads | Last updated"; each row's text is
+  // "<name>\n <count>\n\t11/13/2026\t". One date-only line = one list.
+  const saved = text.match(/all saved (leads|accounts)\s*\((\d[\d,]*)\)/i);
+  const savedTotal = saved ? toNumber(saved[2]) : null;
+  const lines = text.split('\n');
+  const tableRows = [];
+  for (let i = 0; i < lines.length; i++) {
+    const d = lines[i].trim();
+    if (!/^(\d{1,2}\/\d{1,2}\/\d{4}|[A-Z][a-z]{2}[a-z]*\.?\s+\d{1,2},?\s+\d{4})$/.test(d)) continue;
+    const prev = (lines[i - 1] || '').trim();
+    tableRows.push({ size: /^\d[\d,]*$/.test(prev) ? toNumber(prev) : null, updatedDaysAgo: daysAgo(d, now) });
+  }
+  if (tableRows.length) {
+    return {
+      lists: tableRows.length,
+      updated30d: tableRows.filter((r) => r.updatedDaysAgo != null && r.updatedDaysAgo <= 30).length,
+      items: tableRows.reduce((a, r) => a + (r.size || 0), 0),
+      savedTotal,
+    };
+  }
   const rows = [];
   const re = /(\d[\d,]*)\s+(leads?|accounts?)\b/gi;
   const hits = [...text.matchAll(re)];
@@ -136,18 +163,23 @@ export function parseLists(text, now = new Date()) {
     const dates = [...seg.matchAll(DATE_RE)].map((x) => daysAgo(x[1], now)).filter((x) => x != null);
     rows.push({ size: toNumber(hits[k][1]), updatedDaysAgo: dates.length ? Math.min(...dates) : null });
   }
-  if (!rows.length) return null;
+  if (!rows.length) return savedTotal == null ? null : { lists: 0, updated30d: 0, items: 0, savedTotal };
   return {
+    savedTotal,
     lists: rows.length,
     updated30d: rows.filter((r) => r.updatedDaysAgo != null && r.updatedDaysAgo <= 30).length,
     items: rows.reduce((a, r) => a + (r.size || 0), 0),
   };
 }
 
-// Sales Navigator home or settings: InMail credits left, saved leads/accounts totals.
+// Sales Navigator settings: InMail credits left, saved leads/accounts totals.
 export function parseSalesNav(text) {
   const out = {
-    inmailLeft: numberBefore(text, 'inmail credits', 30) ?? numberAfter(text, 'inmail credits', 30),
+    // Live: Sales Navigator settings shows "InMail™ messages \n 0 available."
+    inmailLeft: (() => {
+      const m = text.match(/inmail\S*\s+(?:messages|credits)\s*\n?\s*(\d[\d,]*)\s+available/i);
+      return m ? toNumber(m[1]) : numberBefore(text, 'inmail credits', 30) ?? numberAfter(text, 'inmail credits', 30);
+    })(),
     savedLeads: numberBefore(text, 'saved leads', 30) ?? numberAfter(text, 'saved leads', 30),
     savedAccounts: numberBefore(text, 'saved accounts', 30) ?? numberAfter(text, 'saved accounts', 30),
   };

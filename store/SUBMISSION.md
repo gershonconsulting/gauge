@@ -1,6 +1,6 @@
 # Gauge — Chrome Web Store submission pack
 
-Updated: 2026-11-14 (v0.1.0 package built). Paste-ready answers for the Developer Dashboard. The extension must be built to match this file and `site/privacy.html` exactly — if the code changes, change both.
+Updated: 2026-11-14 (v0.1.1 package built). Paste-ready answers for the Developer Dashboard. The extension must be built to match this file and `site/privacy.html` exactly — if the code changes, change both.
 
 ## Store listing
 - Name: Gauge — Sales Navigator grader
@@ -45,7 +45,7 @@ Updated: 2026-11-14 (v0.1.0 package built). Paste-ready answers for the Develope
 - gauge.gershon.ai verified in Google Search Console and set as the official site
 
 ## Package and assets (ready)
-- Upload package: `dist/gauge-extension-0.1.0.zip` (built from `extension/`)
+- Upload package: `dist/gauge-extension-0.1.1.zip` (built from `extension/`)
 - Store icon: `store/assets/store-icon-128.png` (16/32/48/128 are inside the package)
 - Screenshots 1280×800: `store/assets/screenshot-1-report.png` (demo figures, not a real person), `store/assets/screenshot-2-consent.png`
 - Small promo tile 440×280: `store/assets/promo-small-440x280.png`

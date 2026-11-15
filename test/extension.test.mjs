@@ -25,7 +25,6 @@ test('sent invitations: count and ages', () => {
 test('dashboard and content analytics', () => {
   assert.deepEqual(parseDashboard('14,615\nPost impressions\n30,538\nfollowers\n1,330\nProfile viewers\n361\nSearch appearances'),
     { impressions: 14615, followers: 30538, profileViewers: 1330, searchAppearances: 361 });
-  assert.deepEqual(parseContent('14,615\nImpressions\n+279%\n38\nEngagements'), { impressions: 14615, engagements: 38 });
 });
 
 test('dates', () => {
@@ -38,7 +37,7 @@ test('dates', () => {
 test('lists: count, freshness, no names returned', () => {
   const t = `Acme prospects\n120 leads\nUpdated Nov 3, 2026\nOld list\n40 leads\nUpdated Mar 12, 2025\nThird\n7 leads\n2 days ago`;
   const r = parseLists(t, NOW);
-  assert.deepEqual(r, { lists: 3, updated30d: 2, items: 167 });
+  assert.deepEqual(r, { savedTotal: null, lists: 3, updated30d: 2, items: 167 });
   assert.ok(!JSON.stringify(r).includes('Acme'));
 });
 
@@ -73,4 +72,34 @@ test('no remote code, no eval, consent gate present', () => {
   assert.ok(!/\/messaging|\/sales\/inbox/.test(bg), 'never opens message pages');
   const popup = readFileSync(new URL('popup.html', dir), 'utf8');
   assert.ok(popup.includes('I agree') && popup.includes('gauge.gershon.ai/privacy'));
+});
+
+// Shapes copied from the live pages on 2026-11-14 (names removed).
+test('live SSI page: total comes from "out of 100", not "1 of 1"', () => {
+  const t = 'Your Social Selling Index\n1 of 1\nIndustry SSI rank\nTop 2%\nNetwork SSI rank\nTop 6%\nCurrent Social Selling Index\nPie chart with 5 slices.\nEstablish your professional brand\t17.37\nFind the right people\t11.74\nEngage with insights\t8.45\nBuild relationships\t25\nRemaining points\t37\n63\nout of 100';
+  assert.deepEqual(parseSsi(t), { total: 63, brand: 17.37, find: 11.74, engage: 8.45, relationships: 25, industryTop: 2, networkTop: 6 });
+});
+
+test('live invitations page: "People 484"', () => {
+  const r = parseInvitations('Manage invitations\nReceived\nSent\nPeople 484\nSent 3 days ago\nSent 4 days ago\nSent 2 weeks ago');
+  assert.deepEqual(r, { pending: 484, read: 3, under1w: 2, w1: 0, w2plus: 1 });
+});
+
+test('live content analytics: impressions after the label, not "90 days"', () => {
+  const t = '32\n22\n99+\n90 days\nImpressions\n14,616\nImpressions\n279%\nvs. prior 90 days\n14,616\nImpressions\n32%\n68%\n7,623\nEngagement\n38\nSocial engagements\n30\n7';
+  assert.deepEqual(parseContent(t), { impressions: 14616, engagements: 38 });
+});
+
+test('live dashboard', () => {
+  const t = '32\n22\n99+\n436\nPost impressions in 7 days\n15%\nvs. prior 7 days\n30,538\nTotal followers\nvs. prior 7 days\n1,330\nProfile viewers in 90 days\n30%\nvs. prior 7 days\n361\nSearch appearances Nov 3–9\n0%';
+  assert.deepEqual(parseDashboard(t), { impressions: 436, followers: 30538, profileViewers: 1330, searchAppearances: 361 });
+});
+
+test('live lead lists table and saved total', () => {
+  const t = 'Lead lists\n All saved leads (7441)\nCreate lead list\nName\n\tLeads\t\nLast updated\n\tActions\nList A\n 100\n\t11/13/2026\t\nList B\n 382\n\t10/30/2026\t\nList C\n 40\n\t5/1/2025\t';
+  assert.deepEqual(parseLists(t, NOW), { lists: 3, updated30d: 2, items: 522, savedTotal: 7441 });
+});
+
+test('live Sales Navigator settings: InMail', () => {
+  assert.equal(parseSalesNav('Premium features\nInMail™ messages\n0 available.').inmailLeft, 0);
 });
