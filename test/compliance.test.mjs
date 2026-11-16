@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const read = (f) => readFileSync(new URL('../site/' + f, import.meta.url), 'utf8');
 
@@ -15,9 +15,10 @@ test('privacy policy carries what the Chrome Web Store requires', () => {
 });
 
 test('terms, support and landing page are linked and routed', () => {
-  const routes = read('_redirects');
+  // Cloudflare Pages serves /privacy from privacy.html on its own. A _redirects rewrite to
+  // the .html file loops (308 back to /privacy), so the site must not ship one.
+  assert.ok(!existsSync(new URL('../site/_redirects', import.meta.url)), '_redirects must not exist');
   for (const page of ['privacy', 'terms', 'support']) {
-    assert.ok(routes.includes('/' + page + ' /' + page + '.html 200'));
     assert.ok(read('index.html').includes('href="/' + page + '"'));
     assert.ok(read(page + '.html').includes('href="/privacy"'));
   }
