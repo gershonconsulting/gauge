@@ -1,6 +1,6 @@
 # Gauge — status
 
-Updated: 2026-11-15 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-16 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
@@ -18,8 +18,10 @@ First Gershon app to go through Chrome Web Store review.
 - ✅ Readers checked against Olivier's live pages (2026-11-14 22:15): SSI, sent invitations, dashboard, content analytics, lead/account lists, Sales Nav settings (InMail). Fixed 6 mismatches (SSI total, "People 484", impressions, list table, saved totals, InMail). Invitations scroll inside `<main>`.
 - ❌ Not yet run as an installed extension end to end (needs install in Chrome; the /sales/ssi page froze the tab once — reader now times out instead of hanging)
 - ❌ Saved accounts total not shown on the account-lists page; that lever may show "not read"
-- ✅ Deployed 2026-11-15: Pages project `gauge-gershon-ai` (direct upload of main 122f084, no Git link), custom domain gauge.gershon.ai active with SSL; `/`, `/app`, `/privacy`, `/terms`, `/support`, `/report`, extension zip all 200. `_redirects` removed (it looped on Pages). Redeploy = Pages → Create deployment → upload `site/` as a zip (Production).
-- ❌ Secret `LINKEDIN_CLIENT_SECRET` not set (Production). Must be pasted by a person from the LinkedIn app's Auth tab; then redeploy. `/api/health` shows `linkedinSecretSet`.
+- ✅ Deployed 2026-11-15: Pages project `gauge-gershon-ai` (direct upload, no Git link), custom domain gauge.gershon.ai active with SSL; `/`, `/app`, `/privacy`, `/terms`, `/support`, `/report`, extension zip all 200. `_redirects` removed (it looped on Pages). Redeploy = Pages → Create deployment → upload `site/` as a zip (Production).
+- ✅ Secret `LINKEDIN_CLIENT_SECRET` set (Production) and active since the 2026-11-16 redeploy of main a68a4a7 (17 site files, each checked against its git blob sha before upload). `/api/health` = `linkedinSecretSet: true`, `sessionKeyReady: true`; `/api/auth/linkedin/start` redirects to LinkedIn's sign-in.
+- ❌ LinkedIn sign-in not yet completed end to end by a real user (start → LinkedIn → callback → `/app`).
+- ❌ No auto-deploy: the Pages project is direct upload, which cannot be linked to Git afterwards. Auto-deploy on merge needs a GitHub Actions deploy workflow (Cloudflare API token as a repo secret) or a new Git-connected project.
 - ✅ KV namespace `gauge-gershon-ai-store` bound as `GAUGE_KV` (Production) and live.
 - ❌ Scores are self-reported: a signed-in user can POST any valid score (rate-limited 20/day). Leaderboards trust it. Global stats are approximate under concurrent writes (KV has no transactions).
 - ❌ Rewards for inviters undecided (UI says only "Rewards for top inviters are coming"). Level names/thresholds (Starter <40, Builder, Operator 55, Pro 70, Master 85) and the 20-user percentile gate need the owner's OK.
