@@ -18,9 +18,9 @@ First Gershon app to go through Chrome Web Store review.
 - ✅ Readers checked against Olivier's live pages (2026-11-14 22:15): SSI, sent invitations, dashboard, content analytics, lead/account lists, Sales Nav settings (InMail). Fixed 6 mismatches (SSI total, "People 484", impressions, list table, saved totals, InMail). Invitations scroll inside `<main>`.
 - ❌ Not yet run as an installed extension end to end (needs install in Chrome; the /sales/ssi page froze the tab once — reader now times out instead of hanging)
 - ❌ Saved accounts total not shown on the account-lists page; that lever may show "not read"
-- ❌ Not deployed: gauge.gershon.ai not live (no Pages project / DNS). Store review needs `/privacy` live.
-- ❌ Secret `LINKEDIN_CLIENT_SECRET` not set in Cloudflare. Optional KV namespace bound as `GAUGE_KV` to save scores (without it the report works, scores are not saved).
-- ❌ KV `GAUGE_KV` not bound yet → history/compare/invite/settings show "saving is not switched on".
+- ✅ Deployed 2026-11-15: Pages project `gauge-gershon-ai` (direct upload of main 122f084, no Git link), custom domain gauge.gershon.ai active with SSL; `/`, `/app`, `/privacy`, `/terms`, `/support`, `/report`, extension zip all 200. `_redirects` removed (it looped on Pages). Redeploy = Pages → Create deployment → upload `site/` as a zip (Production).
+- ❌ Secret `LINKEDIN_CLIENT_SECRET` not set (Production). Must be pasted by a person from the LinkedIn app's Auth tab; then redeploy. `/api/health` shows `linkedinSecretSet`.
+- ✅ KV namespace `gauge-gershon-ai-store` bound as `GAUGE_KV` (Production) and live.
 - ❌ Scores are self-reported: a signed-in user can POST any valid score (rate-limited 20/day). Leaderboards trust it. Global stats are approximate under concurrent writes (KV has no transactions).
 - ❌ Rewards for inviters undecided (UI says only "Rewards for top inviters are coming"). Level names/thresholds (Starter <40, Builder, Operator 55, Pro 70, Master 85) and the 20-user percentile gate need the owner's OK.
 - ❌ Chrome Web Store URL empty in `site/extension-latest.json` (`storeUrl`) → app offers the zip + Load unpacked steps until set.
