@@ -38,6 +38,8 @@ First Gershon app to go through Chrome Web Store review.
 - ❌ Minimized-window reading not yet run end to end on a real install (LinkedIn may lazy-load less in a minimized window; fallback is the old background tab).
 - Background policy: user-started runs only. Scheduled/automatic grading NOT built (Web Store would accept it with opt-in disclosure; LinkedIn terms risk is the blocker — owner's call).
 
+- ✅ 2026-11-16 11:27: production redeployed from main 102c1c1 (Olivier's OK): tab icons, install call, privacy text "minimized window", v0.3.0 download all live.
+
 ## How the data flows
 Extension reads → figures go in the URL fragment to `/report` (never sent to a server) → grade computed in the page → if signed in, only scores are POSTed to `/api/grade` → KV (24-month expiry): `member:`, `latest:`, `hist:` (≤100), `invites:`, `ref:<code>`, `rate:`, `stats:global` (users + 5-pt histogram). Keys documented at the top of the storage section in `site/_worker.js`.
 

@@ -6,10 +6,10 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 - ✅ Manifest V3, no remote code, permissions limited to `scripting` + `storage` + www.linkedin.com, justifications below
 - ✅ Consent screen before any reading; privacy policy with Limited Use statement; data-use disclosures below
 - ✅ Store assets: 128 icon, 2 screenshots 1280×800 (consent screenshot redone 2026-11-16 to match v0.3.0 text), promo tile 440×280
-- ❌ Live site must run commit 78de72d+ before submitting: the reviewer reads gauge.gershon.ai/privacy, which must say "minimized window" like the v0.3.0 consent screen
+- ✅ Live site runs 102c1c1 (2026-11-16): privacy policy says "minimized window", matching the v0.3.0 consent screen
 - ❌ v0.3.0 never run end to end as an installed extension — a "does not work" rejection is the most common first-pass failure
 - ❌ Reviewer access: reviewers have no Sales Navigator account; add a short screen-recording link of a real run in the test-instructions field
-- ❌ Developer account: USD 5 fee (Olivier pays himself), 2-step, trader declaration with business postal address + phone
+- ❌ Developer account: Olivier says the account exists and the USD 5 fee is paid (to confirm in the dashboard); still to check 2-step, trader declaration with business postal address + phone
 - ⚠️ Name contains LinkedIn's trademark "Sales Navigator" (nominative use, disclaimer in description); fallback name if flagged: "Gauge by Gershon.ai"
 
 ## Store listing
