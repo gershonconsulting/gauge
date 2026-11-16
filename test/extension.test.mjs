@@ -125,3 +125,15 @@ test('live lead lists table and saved total', () => {
 test('live Sales Navigator settings: InMail', () => {
   assert.equal(parseSalesNav('Premium features\nInMail™ messages\n0 available.').inmailLeft, 0);
 });
+
+test('reading runs in one minimized window, user-started only, no new permissions', () => {
+  const bg = readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
+  const m = JSON.parse(readFileSync(new URL('../extension/manifest.json', import.meta.url), 'utf8'));
+  assert.ok(bg.includes("state: 'minimized'"));
+  assert.ok(bg.includes('reader.close()'), 'reading window must always be closed');
+  assert.ok(!/chrome\.alarms|setInterval/.test(bg), 'no scheduled or automatic runs');
+  assert.deepEqual(m.permissions, ['scripting', 'storage']);
+  assert.deepEqual(m.host_permissions, ['https://www.linkedin.com/*']);
+  const popup = readFileSync(new URL('../extension/popup.html', import.meta.url), 'utf8');
+  assert.ok(popup.includes('minimized Chrome window'), 'consent notice must say how pages are opened');
+});

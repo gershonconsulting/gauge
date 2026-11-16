@@ -105,3 +105,8 @@ body.app{background:#f5f6f8}
 .content a:not(.btn){color:var(--red-dark)}
 .btn[aria-disabled="true"]{cursor:default}
 .btn.line[aria-disabled="true"]:hover{background:#fff}
+.banner.install{display:block;border:2px solid var(--red);border-left-width:8px;padding:24px 28px;background:linear-gradient(135deg,#fff 0%,#fff5f4 100%);box-shadow:0 6px 24px rgba(254,27,4,.12)}
+.banner.install h2{font-size:clamp(22px,3vw,30px);margin:6px 0 8px}
+.banner.install .lead{font-size:17px;margin:0 0 6px;max-width:none;color:var(--text)}
+.banner.install .step{display:inline-block;background:var(--red);color:#fff;font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:4px 10px}
+.banner.install .actions{margin-top:16px}

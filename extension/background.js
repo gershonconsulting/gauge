@@ -1,6 +1,8 @@
 // Gauge — service worker. Runs only when the user clicks "Grade me" in the popup.
-// It opens the user's own LinkedIn pages one at a time in a background tab, reads the visible
-// figures, closes the tab, then opens the Gauge report. No timers, no background activity,
+// It opens the user's own LinkedIn pages one at a time in a single minimized window (so nothing
+// appears in the user's tab strip), reads the visible figures, closes that window, then opens the
+// Gauge report. If a minimized window cannot be created it falls back to one background tab.
+// No timers, no scheduled or automatic runs,
 // nothing is clicked, typed or sent on LinkedIn.
 import { parseSsi, parseInvitations, parseDashboard, parseContent, parseLists, parseSalesNav, parseGroups } from './parsers.js';
 
@@ -54,8 +56,10 @@ async function readOnce(tabId, scroll) {
   return res?.result || { text: '', url: '' };
 }
 
-function waitForLoad(tabId, timeout = 20000) {
-  return new Promise((resolve) => {
+// Navigate an existing tab and wait until it has loaded. The listener is attached before the
+// navigation starts so a fast load cannot be missed.
+function navigate(tabId, url, timeout = 20000) {
+  return new Promise((resolve, reject) => {
     const done = () => {
       chrome.tabs.onUpdated.removeListener(listener);
       clearTimeout(t);
@@ -64,7 +68,25 @@ function waitForLoad(tabId, timeout = 20000) {
     const listener = (id, info) => id === tabId && info.status === 'complete' && done();
     const t = setTimeout(done, timeout);
     chrome.tabs.onUpdated.addListener(listener);
+    chrome.tabs.update(tabId, { url }).catch((e) => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      clearTimeout(t);
+      reject(e);
+    });
   });
+}
+
+// The reading surface: one minimized window with one tab, reused for every page. Returns the tab
+// id and a close() function. Background tab as a fallback (e.g. a browser that refuses minimized windows).
+export async function openReader() {
+  try {
+    const win = await chrome.windows.create({ url: 'about:blank', state: 'minimized', type: 'normal' });
+    const tabId = win.tabs?.[0]?.id ?? (await chrome.tabs.query({ windowId: win.id }))[0].id;
+    return { tabId, mode: 'window', close: () => chrome.windows.remove(win.id).catch(() => {}) };
+  } catch {
+    const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
+    return { tabId: tab.id, mode: 'tab', close: () => chrome.tabs.remove(tab.id).catch(() => {}) };
+  }
 }
 
 // One short injected call: scroll to the bottom and return the text of <main>. No timers run in the
@@ -102,16 +124,20 @@ async function readGroups(tabId) {
 }
 
 // Sales Navigator fills its lists 8–12 s after load: wait for content, not a fixed delay.
-async function readPage(page) {
-  const tab = await chrome.tabs.create({ url: page.url, active: false });
+async function readPage(page, tabId) {
   try {
-    await waitForLoad(tab.id);
-    if (page.read) return await page.read(tab.id);
+    await chrome.tabs.get(tabId);
+  } catch {
+    return { error: 'cancelled' }; // the user closed Gauge's reading window
+  }
+  try {
+    await navigate(tabId, page.url);
+    if (page.read) return await page.read(tabId);
     let last = null;
     let lastJson = '';
     const deadline = Date.now() + 75000; // the invitations page needs ~40 s of scrolling
     while (Date.now() < deadline) {
-      const { text, url, frozen } = await pageText(tab.id, page.scroll);
+      const { text, url, frozen } = await pageText(tabId, page.scroll);
       if (frozen) break;
       if (/\/(login|uas\/login|checkpoint|authwall)/.test(url)) return { error: 'signed_out' };
       if (/\/premium\//.test(url)) return { error: 'no_sales_nav' };
@@ -125,8 +151,6 @@ async function readPage(page) {
     return last ? { data: last } : { error: 'not_found' };
   } catch (e) {
     return { error: 'read_failed' };
-  } finally {
-    chrome.tabs.remove(tab.id).catch(() => {});
   }
 }
 
@@ -140,17 +164,22 @@ async function grade() {
   try {
     const out = {};
     const status = PAGES.map((p) => ({ key: p.key, label: p.label, state: 'waiting' }));
-    for (let i = 0; i < PAGES.length; i++) {
-      status[i].state = 'reading';
-      await setProgress({ running: true, status });
-      const r = await readPage(PAGES[i]);
-      if (r.error === 'signed_out') {
-        await setProgress({ running: false, status, error: 'signed_out' });
-        return { error: 'signed_out' };
+    const reader = await openReader();
+    try {
+      for (let i = 0; i < PAGES.length; i++) {
+        status[i].state = 'reading';
+        await setProgress({ running: true, status });
+        const r = await readPage(PAGES[i], reader.tabId);
+        if (r.error === 'signed_out' || r.error === 'cancelled') {
+          await setProgress({ running: false, status, error: r.error });
+          return { error: r.error };
+        }
+        out[PAGES[i].key] = r.data || null;
+        status[i].state = r.data ? 'done' : 'missing';
+        await setProgress({ running: true, status });
       }
-      out[PAGES[i].key] = r.data || null;
-      status[i].state = r.data ? 'done' : 'missing';
-      await setProgress({ running: true, status });
+    } finally {
+      await reader.close();
     }
     const signals = {
       v: 1,

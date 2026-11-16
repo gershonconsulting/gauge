@@ -4,6 +4,7 @@ const LABEL = { waiting: 'waiting', reading: 'reading…', done: 'read', missing
 const ERRORS = {
   signed_out: 'Please sign in to LinkedIn in this browser, then click Grade me again.',
   busy: 'Gauge is already reading your pages.',
+  cancelled: 'The reading window was closed, so the test stopped. Click Grade me to start again.',
   no_consent: 'Please accept the notice first.',
 };
 

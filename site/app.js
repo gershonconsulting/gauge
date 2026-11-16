@@ -156,13 +156,36 @@ async function extBanner() {
   const b = $('banner');
   const info = await extInfo();
   b.replaceChildren();
+  b.classList.remove('install');
   if (info.state !== 'missing' && info.state !== 'outdated') { b.hidden = true; return; }
-  const msg = info.state === 'missing'
-    ? 'The Gauge extension is not installed in this browser. You need it to run a test.'
-    : `An update of the Gauge extension is available: you have v${info.installed}, the latest is v${info.latest?.version}.`;
-  const a = el('a', 'btn small', info.state === 'missing' ? 'Get the extension' : 'Update');
-  a.href = '#extension';
-  b.append(el('p', null, msg), a);
+  if (info.state === 'outdated') {
+    const a = el('a', 'btn small', 'Update');
+    a.href = '#extension';
+    b.append(el('p', null, `An update of the Gauge extension is available: you have v${info.installed}, the latest is v${info.latest?.version}.`), a);
+    b.hidden = false;
+    return;
+  }
+  // Not installed: this is the first thing a new user must do, so it is the biggest thing on the page.
+  b.classList.add('install');
+  const latest = info.latest;
+  const actions = el('div', 'actions');
+  if (latest?.storeUrl) {
+    const s = el('a', 'btn', 'Add Gauge to Chrome'); s.href = latest.storeUrl; s.target = '_blank'; s.rel = 'noopener';
+    actions.append(s);
+  } else if (latest?.download) {
+    const d = el('a', 'btn', `Download the Chrome extension now (v${latest.version})`);
+    d.href = latest.download; d.setAttribute('download', '');
+    actions.append(d);
+  }
+  const how = el('a', 'btn line small', 'How to install');
+  how.href = '#extension';
+  actions.append(how);
+  append(b,
+    el('span', 'step', 'Step 1 of 2'),
+    el('h2', null, 'Download the Gauge Chrome extension now'),
+    el('p', 'lead', 'The extension is what collects your Sales Navigator figures: SSI, invitations, InMails, lists, posts and groups. Without it there is nothing to grade.'),
+    el('p', 'muted', 'It runs only when you press "Grade me", reads your own LinkedIn pages in your own browser, and never clicks, sends or posts anything.'),
+    actions);
   b.hidden = false;
 }
 
@@ -542,7 +565,7 @@ async function route() {
   const box = $(BOX[page]);
   if (!box.childElementCount) box.append(el('p', 'muted', 'Loading…'));
   try { await RENDER[page](box); } catch { box.replaceChildren(errorCard()); }
-  if (page === 'dashboard' && signedIn) extBanner().catch(() => {});
+  if (signedIn && page !== 'extension') extBanner().catch(() => {});
 }
 
 function openMenu() { $('side').classList.add('open'); $('scrim').hidden = false; $('menu-btn').setAttribute('aria-expanded', 'true'); }

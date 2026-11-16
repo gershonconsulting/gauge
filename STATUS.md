@@ -1,6 +1,6 @@
 # Gauge — status
 
-Updated: 2026-11-16 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-16 (pm) · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
@@ -8,13 +8,13 @@ First Gershon app to go through Chrome Web Store review.
 
 ## State
 - ✅ Site: landing, LinkedIn sign-in (`openid profile email` only), `/report`, `/api/grade`, privacy/terms/support
-- ✅ Extension v0.2.0 (`extension/`, MV3): consent screen (v2) → "Grade me" → opens 8 own-LinkedIn pages one at a time in a background tab, reads figures, closes tab → opens `/report#d=…`. Permissions: `scripting`, `storage`, host `www.linkedin.com`; `site-flag.js` content script on gauge.gershon.ai only (sets the installed version). Build: `node tools/build-extension.mjs` → `dist/` + `site/downloads/` + `site/extension-latest.json`.
+- ✅ Extension v0.3.0 (`extension/`, MV3): consent screen (v2) → "Grade me" → opens 8 own-LinkedIn pages one at a time in ONE minimized window (fallback: background tab), reads figures, closes the window → opens `/report#d=…`. Permissions: `scripting`, `storage`, host `www.linkedin.com`; `site-flag.js` content script on gauge.gershon.ai only (sets the installed version). Build: `node tools/build-extension.mjs` → `dist/` + `site/downloads/` + `site/extension-latest.json`.
 - ✅ Capacity model in `site/score.js` (8 levers incl. **Groups joined** = groups ÷ 100, fill/work/overall, grade, top-3 moves). Reproduces the prototype (66/94/29/C+) and the reading with groups (62/81/29/C).
 - ❌ Moves for that reading come out groups +5, lists +5, find +3 → 75 (groups target 70 like the other fill levers). Owner to decide whether groups should be a suggested move.
 - ✅ Signed-in app `/app`: sidebar menu, Dashboard, History, Compare, Invite (`?ref=` link, badges 1/5/10/25), Share, Extension (installed/outdated/missing, zip download), Settings (show-name opt-in default OFF, 2-step Delete my data, sign out), Legal links everywhere.
 - ✅ API: `/api/grade` (+history cap 100, 20 saves/day, server-checked grade), `/api/history`, `/api/settings`, `/api/invite`, `/api/compare`, `/api/delete-me`. Without KV every page says saving is off; sign-in still works.
 - ✅ Tests: `npm test` on Node 22 (parsers incl. fixtures shaped like the live pages, score, game rules, app API with fake KV, worker, manifest, release, legal links)
-- ✅ Store pack: `store/SUBMISSION.md`, package `dist/gauge-extension-0.2.0.zip`, assets in `store/assets/`
+- ✅ Store pack: `store/SUBMISSION.md`, package `dist/gauge-extension-0.3.0.zip`, assets in `store/assets/`
 - ✅ Readers checked against Olivier's live pages (2026-11-14 22:15): SSI, sent invitations, dashboard, content analytics, lead/account lists, Sales Nav settings (InMail). Fixed 6 mismatches (SSI total, "People 484", impressions, list table, saved totals, InMail). Invitations scroll inside `<main>`.
 - ❌ Not yet run as an installed extension end to end (needs install in Chrome; the /sales/ssi page froze the tab once — reader now times out instead of hanging)
 - ❌ Saved accounts total not shown on the account-lists page; that lever may show "not read"
@@ -32,6 +32,11 @@ First Gershon app to go through Chrome Web Store review.
 - ❌ Store submission itself
 - ❌ Not measurable yet: invitation acceptance rate (needs two readings), message reply rate
 - ❌ Model targets/limits are Claude's proposal (fill target 70%, InMail 50/month, invites 100/week, saved limits 10,000)
+
+- ✅ 2026-11-16: tab icon on every page (`favicon.ico`, 32px PNG, apple-touch, 192/512; made by `tools/make-site-icons.py`). Before, only `/` had an inline icon and `/favicon.ico` returned the home page HTML.
+- ✅ 2026-11-16: signed-in pages show a large "Step 1 — Download the Gauge Chrome extension now" block (direct download button) whenever the extension is missing.
+- ❌ Minimized-window reading not yet run end to end on a real install (LinkedIn may lazy-load less in a minimized window; fallback is the old background tab).
+- Background policy: user-started runs only. Scheduled/automatic grading NOT built (Web Store would accept it with opt-in disclosure; LinkedIn terms risk is the blocker — owner's call).
 
 ## How the data flows
 Extension reads → figures go in the URL fragment to `/report` (never sent to a server) → grade computed in the page → if signed in, only scores are POSTed to `/api/grade` → KV (24-month expiry): `member:`, `latest:`, `hist:` (≤100), `invites:`, `ref:<code>`, `rate:`, `stats:global` (users + 5-pt histogram). Keys documented at the top of the storage section in `site/_worker.js`.
