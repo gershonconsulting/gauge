@@ -2,13 +2,23 @@
 
 Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`). Paste-ready answers for the Developer Dashboard. The extension must be built to match this file and `site/privacy.html` exactly — if the code changes, change both.
 
+## Pre-submission audit (2026-11-16)
+- ✅ Manifest V3, no remote code, permissions limited to `scripting` + `storage` + www.linkedin.com, justifications below
+- ✅ Consent screen before any reading; privacy policy with Limited Use statement; data-use disclosures below
+- ✅ Store assets: 128 icon, 2 screenshots 1280×800 (consent screenshot redone 2026-11-16 to match v0.3.0 text), promo tile 440×280
+- ❌ Live site must run commit 78de72d+ before submitting: the reviewer reads gauge.gershon.ai/privacy, which must say "minimized window" like the v0.3.0 consent screen
+- ❌ v0.3.0 never run end to end as an installed extension — a "does not work" rejection is the most common first-pass failure
+- ❌ Reviewer access: reviewers have no Sales Navigator account; add a short screen-recording link of a real run in the test-instructions field
+- ❌ Developer account: USD 5 fee (Olivier pays himself), 2-step, trader declaration with business postal address + phone
+- ⚠️ Name contains LinkedIn's trademark "Sales Navigator" (nominative use, disclaimer in description); fallback name if flagged: "Gauge by Gershon.ai"
+
 ## Store listing
 - Name: Gauge — Sales Navigator grader
 - Summary (132 max): See how much of your LinkedIn Sales Navigator capacity you use. One click, one grade, three moves to improve. Read-only.
 - Category: Workflow & Planning · Language: English
 - Description:
   Gauge grades how efficiently you use LinkedIn Sales Navigator. Click the Gauge icon, then "Grade me", and see the share of your Sales Navigator capacity you really use, lever by lever, with the three moves that add the most.
-  Gauge reads only figures about your own activity (Social Selling Index, pending invitations, content results, number of groups joined, saved lists and searches). It never reads your leads, contacts or messages, never sends or posts anything, and does nothing until you click.
+  Gauge reads only figures about your own activity (Social Selling Index, pending invitations, post results, number of groups joined, Sales Navigator lists, InMail credits, and saved leads and accounts). It never reads your leads, contacts or messages, never sends or posts anything, and does nothing until you click.
   Gauge is an independent product by Gershon Consulting LLC and is not affiliated with or endorsed by LinkedIn Corporation.
 - Homepage: https://gauge.gershon.ai · Support: https://gauge.gershon.ai/support · Privacy policy: https://gauge.gershon.ai/privacy
 - Mature content: No · Ads: No · Payments: None
