@@ -29,7 +29,8 @@ First Gershon app to go through Chrome Web Store review.
 - ❌ Groups reader not yet checked end-to-end on a live account in the extension (parser checked against the page text given).
 - ❌ Remove "Share on LinkedIn" (w_member_social) product from the LinkedIn app before review
 - ❌ Developer account steps (USD 5 fee, 2-step, trader declaration) and business postal address
-- ❌ Store submission itself
+- ✅ 2026-11-16 21:45: submitted to Chrome Web Store review (publisher olivier@gershonconsulting.com, item ID epadkmhdddplghochdbobleclchhdbef, status Pending review). On approval: set `storeUrl` in site/extension-latest.json to https://chromewebstore.google.com/detail/epadkmhdddplghochdbobleclchhdbef and redeploy.
+- ❌ Official URL not set on the listing: Search Console tag in index.html (eed30af) not yet deployed/verified
 - ❌ Not measurable yet: invitation acceptance rate (needs two readings), message reply rate
 - ❌ Model targets/limits are Claude's proposal (fill target 70%, InMail 50/month, invites 100/week, saved limits 10,000)
 
