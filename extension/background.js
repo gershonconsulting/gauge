@@ -5,6 +5,7 @@
 // No timers, no scheduled or automatic runs,
 // nothing is clicked, typed or sent on LinkedIn.
 import { parseSsi, parseInvitations, parseDashboard, parseContent, parseLists, parseSalesNav, parseGroups } from './parsers.js';
+import { parsePageVisitors, adminPageId } from './page-parsers.js';
 
 const REPORT_URL = 'https://gauge.gershon.ai/report';
 const LI = 'https://www.linkedin.com';
@@ -18,6 +19,7 @@ export const PAGES = [
   { key: 'listsCompany', label: 'Account lists', url: `${LI}/sales/lists/company`, parse: (t) => parseLists(t), scroll: 4 },
   { key: 'salesnav', label: 'InMail credits', url: `${LI}/sales/settings`, parse: parseSalesNav },
   { key: 'groups', label: 'Your groups', url: `${LI}/groups/`, read: readGroups },
+  { key: 'page', label: 'Company Page visitors (Page admins only)', url: `${LI}/feed/`, read: readCompanyPage },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -123,6 +125,32 @@ async function readGroups(tabId) {
   return best ? { data: best } : { error: 'not_found' };
 }
 
+// Company Page visitors: find a Page the user administers from the links on their own feed, then
+// read the 30-day visitor count on that Page's analytics. Not a Page admin = no reading, which
+// leaves the "Page visitors worked" lever out of the grade. Visitor names are never read.
+async function readCompanyPage(tabId) {
+  let id = null;
+  for (let i = 0; i < 6 && !id; i++) {
+    const [res] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => ({ hrefs: [...document.querySelectorAll('a[href*="/company/"]')].map((a) => a.getAttribute('href')), url: location.href }),
+    });
+    if (/\/(login|uas\/login|checkpoint|authwall)/.test(res?.result?.url || '')) return { error: 'signed_out' };
+    id = adminPageId(res?.result?.hrefs);
+    if (!id) await sleep(1500);
+  }
+  if (!id) return { data: { admin: false } };
+  await navigate(tabId, `${LI}/company/${id}/admin/analytics/visitors/`);
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    const { text } = await scrollAndRead(tabId);
+    const v = parsePageVisitors(text);
+    if (v) return { data: { admin: true, ...v } };
+    await sleep(1500);
+  }
+  return { data: { admin: true, visitors30d: null } };
+}
+
 // Sales Navigator fills its lists 8–12 s after load: wait for content, not a fixed delay.
 async function readPage(page, tabId) {
   try {
@@ -155,9 +183,9 @@ async function readPage(page, tabId) {
 }
 
 async function grade() {
-  // Consent must cover the current list of figures (version 2 added the groups count).
+  // Consent must cover the current list of figures (2: groups count, 3: company Page visitor count).
   const stored = await chrome.storage.local.get(['consent', 'consentVersion']);
-  const consent = stored.consentVersion >= 2 ? stored.consent : null;
+  const consent = stored.consentVersion >= 3 ? stored.consent : null;
   if (!consent) return { error: 'no_consent' };
   if (running) return { error: 'busy' };
   running = true;
@@ -195,6 +223,7 @@ async function grade() {
         savedAccounts: out.listsCompany?.savedTotal ?? out.salesnav?.savedAccounts ?? null,
       },
       groups: out.groups,
+      page: out.page?.visitors30d != null ? { visitors30d: out.page.visitors30d } : null,
     };
     const d = encode(signals);
     await chrome.storage.local.set({ lastRead: signals.readAt });
