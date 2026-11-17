@@ -25,7 +25,7 @@ First Gershon app to go through Chrome Web Store review.
 - ✅ KV namespace `gauge-gershon-ai-store` bound as `GAUGE_KV` (Production) and live.
 - ❌ Scores are self-reported: a signed-in user can POST any valid score (rate-limited 20/day). Leaderboards trust it. Global stats are approximate under concurrent writes (KV has no transactions).
 - ❌ Rewards for inviters undecided (UI says only "Rewards for top inviters are coming"). Level names/thresholds (Starter <40, Builder, Operator 55, Pro 70, Master 85) and the 20-user percentile gate need the owner's OK.
-- ❌ Chrome Web Store URL empty in `site/extension-latest.json` (`storeUrl`) → app offers the zip + Load unpacked steps until set.
+- ✅ 2026-11-17: Chrome Web Store listing APPROVED and live (v0.3.0): https://chromewebstore.google.com/detail/epadkmhdddplghochdbobleclchhdbef — `storeUrl` set in `site/extension-latest.json`; app now shows "Add Gauge to Chrome".
 - ❌ Groups reader not yet checked end-to-end on a live account in the extension (parser checked against the page text given).
 - ❌ Remove "Share on LinkedIn" (w_member_social) product from the LinkedIn app before review
 - ❌ Developer account steps (USD 5 fee, 2-step, trader declaration) and business postal address
