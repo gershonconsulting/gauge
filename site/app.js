@@ -510,6 +510,27 @@ async function renderSettings(box) {
   if (noKv) lb.append(el('p', 'muted small', 'Saving is not switched on yet on this site.'));
   out.push(lb);
 
+  const sh = card(el('h2', null, 'Share with Gershon Consulting'));
+  const lab2 = el('label', 'toggle');
+  const cb2 = el('input');
+  cb2.type = 'checkbox';
+  cb2.checked = s.body.shareWithGershon === true;
+  cb2.disabled = noKv;
+  const txt2 = el('span');
+  txt2.append(el('b', null, 'Share my result with Gershon Consulting'), el('br'),
+    el('span', 'muted small', 'On: the Gershon Consulting team can see your name, email and scores to help you improve. Off (default): they only see anonymous totals. Your LinkedIn data is never shared.'));
+  lab2.append(cb2, txt2);
+  const st2 = el('p', 'status');
+  cb2.addEventListener('change', async () => {
+    cb2.disabled = true;
+    st2.textContent = 'Saving…';
+    const r = await api('/api/settings', { method: 'POST', body: JSON.stringify({ shareWithGershon: cb2.checked }) }).catch(() => ({ ok: false }));
+    if (r.ok) { st2.textContent = 'Saved.'; drop('settings'); } else { cb2.checked = !cb2.checked; st2.textContent = 'Could not save. Try again.'; }
+    cb2.disabled = false;
+  });
+  sh.append(lab2, st2);
+  out.push(sh);
+
   const del = card(el('h2', null, 'Delete my data'), el('p', 'muted', 'Deletes your profile, every saved test, your settings, your invite link and invite links in both directions, and your place on leaderboards. Then you are signed out. This cannot be undone.'));
   const start = el('button', 'btn danger small', 'Delete my data');
   start.type = 'button';

@@ -104,6 +104,24 @@ function render(r, s) {
   }
 }
 
+async function shareBox() {
+  const box = $('share-gershon');
+  const cb = $('share-gershon-cb');
+  if (!box || !cb) return;
+  const cur = await fetch('/api/settings', { credentials: 'same-origin' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  if (!cur || cur.storage === false) return;
+  cb.checked = cur.shareWithGershon === true;
+  box.hidden = false;
+  cb.addEventListener('change', async () => {
+    cb.disabled = true;
+    const r = await fetch('/api/settings', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareWithGershon: cb.checked }) }).catch(() => null);
+    if (r?.ok) $('share-gershon-st').textContent = cb.checked ? ' Shared. Thank you.' : ' Not shared.';
+    else { cb.checked = !cb.checked; $('share-gershon-st').textContent = ' Could not save. Try again.'; }
+    cb.disabled = false;
+  });
+}
+
 async function save(r) {
   try {
     const me = await fetch('/api/me', { credentials: 'same-origin' }).then((x) => (x.ok ? x.json() : null));
@@ -124,5 +142,6 @@ async function save(r) {
     });
     const out = await res.json().catch(() => ({}));
     if (out.saved) $('saved').hidden = false;
+    if (out.saved) shareBox();
   } catch {}
 }

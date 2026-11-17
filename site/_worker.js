@@ -11,7 +11,7 @@ const DEFAULTS = {
 const SESSION_COOKIE = 'gauge_session';
 const STATE_COOKIE = 'gauge_oauth_state';
 const NEXT_COOKIE = 'gauge_next';
-const NEXT_OK = new Set(['/', '/report', '/app']);
+const NEXT_OK = new Set(['/', '/report', '/app', '/admin']);
 const SESSION_TTL = 60 * 60 * 24 * 30; // 30 days
 const STATE_TTL = 600; // 10 minutes
 
@@ -350,17 +350,25 @@ async function settings(request, env) {
   if (request.method === 'GET') {
     if (!kv) return noStorage({ showName: false });
     const m = await getJson(kv, `member:${s.sub}`);
-    return json({ storage: true, showName: m?.showName === true });
+    return json({ storage: true, showName: m?.showName === true, shareWithGershon: m?.shareWithGershon === true });
   }
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   let body;
   try { body = await request.json(); } catch { return json({ error: 'bad_request' }, 400); }
-  if (typeof body?.showName !== 'boolean') return json({ error: 'bad_request' }, 400);
+  const hasShow = typeof body?.showName === 'boolean';
+  const hasShare = typeof body?.shareWithGershon === 'boolean';
+  if (!hasShow && !hasShare) return json({ error: 'bad_request' }, 400);
   if (!kv) return json({ storage: false, error: 'storage_not_configured' }, 503);
   const [m] = await ensureMember(kv, s);
-  m.showName = body.showName;
+  if (hasShow) m.showName = body.showName;
+  if (hasShare) {
+    // Explicit consent for Gershon Consulting staff to see this member's name, email and scores
+    // (Chrome Web Store Limited Use). Off by default; can be withdrawn at any time.
+    m.shareWithGershon = body.shareWithGershon;
+    m.shareAt = body.shareWithGershon ? new Date().toISOString() : null;
+  }
   await putJson(kv, `member:${s.sub}`, m);
-  return json({ storage: true, showName: m.showName });
+  return json({ storage: true, showName: m.showName === true, shareWithGershon: m.shareWithGershon === true });
 }
 
 async function invite(request, env) {
@@ -471,6 +479,167 @@ async function landing(request, env) {
   return out;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Admin (/admin) and the daily internal report. Only Gershon Consulting accounts listed in
+// ADMIN_EMAILS can open it. Names, emails and scores are shown ONLY for members who ticked
+// "Share my result with Gershon Consulting" (member.shareWithGershon === true); everyone else is
+// counted in anonymous totals only (Chrome Web Store Limited Use, see /privacy).
+export const ADMIN_EMAILS_DEFAULT = ['olivier@gershonconsulting.com', 'oattia@gmail.com'];
+export const REPORT_TO_DEFAULT = 'report@gershonconsulting.com';
+const REPORT_FROM = 'Gauge <gauge@gershon.ai>';
+const SITE = 'https://gauge.gershon.ai';
+const MEMBER_SCAN_PAGES = 20; // 20 x 1000 keys
+
+export function adminEmails(env) {
+  const extra = String(env.ADMIN_EMAILS || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return new Set([...ADMIN_EMAILS_DEFAULT, ...extra]);
+}
+const isAdmin = (s, env) => !!s && !!s.email && adminEmails(env).has(String(s.email).toLowerCase());
+
+async function adminSession(request, env) {
+  const s = await session(request, env);
+  if (!s) return [null, json({ error: 'signed_out' }, 401)];
+  if (!isAdmin(s, env)) return [null, json({ error: 'forbidden' }, 403)];
+  return [s, null];
+}
+
+async function allMembers(kv) {
+  const ids = [];
+  let cursor;
+  for (let page = 0; page < MEMBER_SCAN_PAGES; page++) {
+    const r = await kv.list({ prefix: 'member:', cursor });
+    for (const k of r.keys) ids.push(k.name);
+    if (r.list_complete || !r.cursor) break;
+    cursor = r.cursor;
+  }
+  return (await Promise.all(ids.map((k) => getJson(kv, k)))).filter(Boolean);
+}
+
+const letter = (g) => (g ? g[0] : null);
+
+// Pure: totals for everyone, named rows for consenting members only. sinceMs marks "new".
+export function summarize(members, sinceMs = 0) {
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const graded = members.filter((m) => m.lastOverall != null);
+  const grades = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+  for (const m of graded) grades[letter(gradeFor(m.lastOverall))]++;
+  const t = (v) => (v ? Date.parse(v) : 0);
+  const shared = members.filter((m) => m.shareWithGershon === true);
+  const row = (m) => ({
+    id: m.id, name: m.name || '', email: m.email || '', picture: m.picture || '',
+    joined: m.createdAt || null, tests: m.tests || 0, overall: m.lastOverall ?? null,
+    grade: gradeFor(m.lastOverall ?? null), prev: m.prevOverall ?? null, best: m.best ?? null, lastAt: m.lastAt || null,
+    invitedBy: m.invitedBy ? (byId.get(m.invitedBy)?.shareWithGershon ? byId.get(m.invitedBy).name : 'a member') : null,
+    isNew: t(m.createdAt) >= sinceMs, testedRecently: t(m.lastAt) >= sinceMs,
+  });
+  const recentAll = members.filter((m) => t(m.lastAt) >= sinceMs);
+  return {
+    totals: {
+      signedIn: members.length,
+      graded: graded.length,
+      tests: members.reduce((a, m) => a + (m.tests || 0), 0),
+      average: graded.length ? Math.round(graded.reduce((a, m) => a + m.lastOverall, 0) / graded.length) : null,
+      grades,
+      invited: members.filter((m) => m.invitedBy).length,
+      shared: shared.length,
+      anonymous: members.length - shared.length,
+    },
+    since: sinceMs ? new Date(sinceMs).toISOString() : null,
+    recent: {
+      signedIn: members.filter((m) => t(m.createdAt) >= sinceMs).length,
+      tested: recentAll.length,
+      average: recentAll.length ? Math.round(recentAll.reduce((a, m) => a + (m.lastOverall ?? 0), 0) / recentAll.length) : null,
+    },
+    people: shared.map(row).sort((a, b) => t(b.lastAt || b.joined) - t(a.lastAt || a.joined)),
+  };
+}
+
+async function adminSummary(request, env) {
+  const [, err] = await adminSession(request, env);
+  if (err) return err;
+  if (!env.GAUGE_KV) return noStorage();
+  const sinceMs = Date.now() - 86400000;
+  return json({ storage: true, emailReady: !!env.RESEND_API_KEY, lastReport: await env.GAUGE_KV.get('daily:last'),
+    ...summarize(await allMembers(env.GAUGE_KV), sinceMs) });
+}
+
+async function adminMember(request, env) {
+  const [, err] = await adminSession(request, env);
+  if (err) return err;
+  const kv = env.GAUGE_KV;
+  if (!kv) return noStorage();
+  const id = new URL(request.url).searchParams.get('id') || '';
+  const m = await getJson(kv, `member:${id}`);
+  if (!m || m.shareWithGershon !== true) return json({ error: 'not_shared' }, 404);
+  return json({ storage: true, ...summarize([m]).people[0], history: (await getJson(kv, `hist:${id}`)) || [] });
+}
+
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const etDay = (ms) => new Date(ms).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' });
+
+export function reportEmail(sum, sinceMs, nowMs) {
+  const a = etDay(sinceMs), b = etDay(nowMs);
+  const range = a === b ? b : `${a} – ${b}`;
+  const T = sum.totals, R = sum.recent;
+  const line = (k, v) => `<tr><td style="padding:4px 12px 4px 0;color:#555">${esc(k)}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>`;
+  const recentPeople = sum.people.filter((p) => p.isNew || p.testedRecently);
+  const people = recentPeople.length
+    ? `<table style="border-collapse:collapse;font-size:14px"><tr style="text-align:left;color:#555"><th style="padding:4px 10px 4px 0">Name</th><th style="padding:4px 10px 4px 0">Email</th><th style="padding:4px 10px 4px 0">Score</th><th style="padding:4px 10px 4px 0">Tests</th><th>New?</th></tr>${recentPeople
+        .map((p) => `<tr><td style="padding:4px 10px 4px 0">${esc(p.name)}</td><td style="padding:4px 10px 4px 0">${esc(p.email)}</td><td style="padding:4px 10px 4px 0">${p.overall == null ? '—' : `${p.overall}% (${esc(p.grade)})`}</td><td style="padding:4px 10px 4px 0">${p.tests}</td><td>${p.isNew ? 'new' : ''}</td></tr>`)
+        .join('')}</table>`
+    : '<p style="color:#555">No tester who shared their result was active in this period.</p>';
+  const html = `<div style="font-family:Arial,sans-serif;color:#111;max-width:640px">
+<h2 style="color:#FE1B04;margin:0 0 4px">Gauge daily report</h2><p style="color:#555;margin:0 0 16px">${esc(range)} (last 24 hours)</p>
+<h3 style="margin:16px 0 4px">Last 24 hours</h3><table>${line('New sign-ins', R.signedIn)}${line('People who ran a test', R.tested)}${line('Their average score', R.average == null ? '—' : R.average + '%')}</table>
+<h3 style="margin:16px 0 4px">Testers who shared their result</h3>${people}
+<p style="color:#555;font-size:13px">${R.tested - recentPeople.filter((p) => p.testedRecently).length > 0 ? `${R.tested - recentPeople.filter((p) => p.testedRecently).length} other tester(s) did not share their result and are only counted.` : ''}</p>
+<h3 style="margin:16px 0 4px">All time</h3><table>${line('Signed in', T.signedIn)}${line('Graded', T.graded)}${line('Tests run', T.tests)}${line('Average score', T.average == null ? '—' : T.average + '%')}${line('Grades A/B/C/D/F', `${T.grades.A}/${T.grades.B}/${T.grades.C}/${T.grades.D}/${T.grades.F}`)}${line('Came through an invite', T.invited)}${line('Shared with Gershon', T.shared)}</table>
+<p style="margin-top:20px"><a href="${SITE}/admin" style="background:#FE1B04;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Open the Gauge admin</a></p></div>`;
+  return { subject: `Gauge Report — ${range}`, html };
+}
+
+// POST /api/admin/daily — called once a day by the GitHub Actions schedule (no secret needed:
+// it only ever mails the fixed internal address, at most once every 20 hours). A signed-in admin
+// can add ?preview=1 (no send) or ?force=1 (send now).
+async function adminDaily(request, env) {
+  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+  const kv = env.GAUGE_KV;
+  if (!kv) return noStorage();
+  const q = new URL(request.url).searchParams;
+  const admin = isAdmin(await session(request, env), env);
+  const now = Date.now();
+  const last = Date.parse((await kv.get('daily:last')) || '') || 0;
+  if (!(admin && q.get('force') === '1') && !(admin && q.get('preview') === '1') && last && now - last < 20 * 3600000) {
+    return json({ sent: false, skipped: 'already_sent', last: new Date(last).toISOString() });
+  }
+  const since = now - 86400000;
+  const mail = reportEmail(summarize(await allMembers(kv), since), since, now);
+  if (admin && q.get('preview') === '1') return json({ sent: false, preview: true, ...mail });
+  if (!env.RESEND_API_KEY) return json({ sent: false, error: 'email_not_configured', subject: mail.subject });
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: REPORT_FROM, to: [env.REPORT_TO || REPORT_TO_DEFAULT], subject: mail.subject, html: mail.html }),
+  });
+  if (!r.ok) return json({ sent: false, error: 'send_failed', status: r.status }, 502);
+  await kv.put('daily:last', new Date(now).toISOString());
+  return json({ sent: true, subject: mail.subject, to: env.REPORT_TO || REPORT_TO_DEFAULT });
+}
+
+const forbiddenPage = (email) => new Response(`<!doctype html><meta charset="utf-8"><title>Gauge admin</title><link rel="stylesheet" href="/gauge.css"><main style="max-width:560px;margin:80px auto;font-family:sans-serif"><h1>Admin only</h1><p>You are signed in as ${esc(email || 'an account without an email')}, which is not a Gauge admin account.</p><p><a href="/app">Back to Gauge</a></p></main>`,
+  { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+
+async function adminPage(request, env) {
+  const s = await session(request, env);
+  if (!s) return redirect('/api/auth/linkedin/start?next=/admin');
+  if (!isAdmin(s, env)) return forbiddenPage(s.email);
+  const res = await env.ASSETS.fetch(new Request(new URL('/admin', request.url), { headers: request.headers }));
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'no-store');
+  out.headers.set('X-Robots-Tag', 'noindex');
+  return out;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -496,7 +665,11 @@ export default {
       if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
       return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SESSION_COOKIE, '', 0) });
     }
+    if (p === '/api/admin/summary') return adminSummary(request, env);
+    if (p === '/api/admin/member') return adminMember(request, env);
+    if (p === '/api/admin/daily') return adminDaily(request, env);
     if (p.startsWith('/api/')) return json({ error: 'not_found' }, 404);
+    if (p === '/admin' || p === '/admin/' || p === '/admin.html') return adminPage(request, env);
     if (p === '/' && request.method === 'GET') return landing(request, env);
     return env.ASSETS.fetch(request);
   },

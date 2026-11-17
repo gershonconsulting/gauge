@@ -1,0 +1,12 @@
+# Gauge daily internal report: asks gauge.gershon.ai to email report@gershonconsulting.com.
+# The site itself decides what to send and never sends more than once every 20 hours.
+name: Gauge daily report
+on:
+  schedule:
+    - cron: '0 23 * * *' # 23:00 UTC = 6 PM New York (EST)
+  workflow_dispatch:
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -X POST https://gauge.gershon.ai/api/admin/daily
