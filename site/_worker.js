@@ -484,7 +484,7 @@ async function landing(request, env) {
 // ADMIN_EMAILS can open it. Names, emails and scores are shown ONLY for members who ticked
 // "Share my result with Gershon Consulting" (member.shareWithGershon === true); everyone else is
 // counted in anonymous totals only (Chrome Web Store Limited Use, see /privacy).
-export const ADMIN_EMAILS_DEFAULT = ['olivier@gershonconsulting.com', 'oattia@gmail.com'];
+export const ADMIN_EMAILS_DEFAULT = ['olivier@attia.com', 'olivier@gershonconsulting.com', 'oattia@gmail.com']; // olivier@attia.com = Olivier's LinkedIn sign-in email
 export const REPORT_TO_DEFAULT = 'report@gershonconsulting.com';
 const REPORT_FROM = 'Gauge <gauge@gershon.ai>';
 const SITE = 'https://gauge.gershon.ai';

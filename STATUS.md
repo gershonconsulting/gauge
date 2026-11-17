@@ -41,7 +41,7 @@ First Gershon app to go through Chrome Web Store review.
 
 - ✅ 2026-11-16 11:27: production redeployed from main 102c1c1 (Olivier's OK): tab icons, install call, privacy text "minimized window", v0.3.0 download all live.
 
-- ✅ 2026-11-16 (eve): `/admin` (admin accounts only: olivier@gershonconsulting.com, oattia@gmail.com, + env `ADMIN_EMAILS`), `/api/admin/summary|member|daily`. Names/emails/scores ONLY for members who tick "Share my result with Gershon Consulting" (`member.shareWithGershon`, off by default; report page + Settings); everyone else = anonymous totals (Limited Use). Privacy policy updated (consent bullet + Resend as processor).
+- ✅ 2026-11-16 (eve): `/admin` (admin accounts only: olivier@attia.com (his LinkedIn email), olivier@gershonconsulting.com, oattia@gmail.com, + env `ADMIN_EMAILS`), `/api/admin/summary|member|daily`. Names/emails/scores ONLY for members who tick "Share my result with Gershon Consulting" (`member.shareWithGershon`, off by default; report page + Settings); everyone else = anonymous totals (Limited Use). Privacy policy updated (consent bullet + Resend as processor).
 - ✅ Daily email: `.github/workflows/daily-report.yml` 23:00 UTC (6 PM EST) → POST `/api/admin/daily` → Resend from gauge@gershon.ai to report@gershonconsulting.com, subject "Gauge Report — <dates>", max once per 20 h. Needs Pages secret `RESEND_API_KEY` (Production).
 
 ## How the data flows
