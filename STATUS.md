@@ -1,6 +1,6 @@
 # Gauge — status
 
-Updated: 2026-11-16 (pm) · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-17 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
@@ -53,3 +53,9 @@ Client ID `86rofazxdl07cq` (public). Redirect: `https://gauge.gershon.ai/api/aut
 ## Deploy route
 Cloudflare Pages, deploy root = `site/` (`_worker.js` advanced mode). Project `gauge-gershon-ai`. Then: secret (Production), optional KV `GAUGE_KV`, redeploy, custom domain `gauge.gershon.ai`, check `/api/health`.
 Whenever `extension/` changes: bump `version` in the manifest, run `node tools/build-extension.mjs` (a test fails if the site's latest.json and the manifest differ).
+
+- ✅ 2026-11-17 (branch `page-visitors`): 9th lever **Page visitors worked** (work group, bonus: only Page admins get a reading, otherwise left out of the average). Proxy = invitations last week × 4 ÷ company Page unique visitors (30 days), target 70. Extension v0.4.0 finds the first Page the user admins from `/company/<id>/admin` links on their feed, reads only the visitor count on `/company/<id>/admin/analytics/visitors/`. Consent v3, privacy + store text updated, worker accepts `pageVisitors`. 68 tests pass.
+- ❌ Page visitors reader not checked on a live Page analytics page (parser built from LinkedIn's "Unique visitors" / Premium "Page visitors" wording).
+- ❌ v0.4.0 must be uploaded to the Chrome Web Store (new review, data disclosure unchanged: website content). Deploy the site only after the store approves 0.4.0, otherwise store users are told they are "outdated".
+- ❌ Proxy formula is Claude's proposal; not yet confirmed by Olivier.
+- ❌ `dist/gauge-extension-0.4.0.zip` and `site/downloads/gauge-extension-0.4.0.zip` not yet on the branch (the GitHub connector cannot push binary files): run `node tools/build-extension.mjs` and commit both before merging; until then the release test fails on a fresh clone.

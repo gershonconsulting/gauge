@@ -18,7 +18,7 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 - Category: Workflow & Planning · Language: English
 - Description:
   Gauge grades how efficiently you use LinkedIn Sales Navigator. Click the Gauge icon, then "Grade me", and see the share of your Sales Navigator capacity you really use, lever by lever, with the three moves that add the most.
-  Gauge reads only figures about your own activity (Social Selling Index, pending invitations, post results, number of groups joined, Sales Navigator lists, InMail credits, and saved leads and accounts). It never reads your leads, contacts or messages, never sends or posts anything, and does nothing until you click.
+  Gauge reads only figures about your own activity (Social Selling Index, pending invitations, post results, number of groups joined, 30-day visitor count of a company Page you manage, Sales Navigator lists, InMail credits, and saved leads and accounts). It never reads your leads, contacts or messages, never sends or posts anything, and does nothing until you click.
   Gauge is an independent product by Gershon Consulting LLC and is not affiliated with or endorsed by LinkedIn Corporation.
 - Homepage: https://gauge.gershon.ai · Support: https://gauge.gershon.ai/support · Privacy policy: https://gauge.gershon.ai/privacy
 - Mature content: No · Ads: No · Payments: None
@@ -29,7 +29,7 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
   - `scripting`: after the user clicks "Grade me", read the visible figures on the user's own LinkedIn pages that Gauge opens in its own minimized window.
   - `storage`: remember that the user accepted the data notice, and show reading progress in the popup.
   - Content script on `https://gauge.gershon.ai/*` only (`site-flag.js`): sets one attribute with the extension version on Gauge's own site so the site can show "installed / update available". It reads nothing and sends nothing. It never runs on LinkedIn or any other site.
-  - Host access `https://www.linkedin.com/*`: the figures are on the user's own LinkedIn and Sales Navigator pages (SSI, sent invitations, dashboard, content analytics, groups list — count only, Sales Navigator lists and home).
+  - Host access `https://www.linkedin.com/*`: the figures are on the user's own LinkedIn and Sales Navigator pages (SSI, sent invitations, dashboard, content analytics, groups list — count only, company Page visitor analytics — count only and only for Page admins, Sales Navigator lists and home).
   - Not requested: `tabs`, `activeTab`, `cookies`, `webRequest`, `history`, `identity`, `<all_urls>`, no content scripts on any site other than gauge.gershon.ai. Opening and closing its own minimized window (fallback: one background tab) needs no extra permission.
   - No host permission for gauge.gershon.ai is requested (the version flag above is a declared content script only): the report opens as a normal tab and the figures travel in the URL fragment (`#d=…`), which the browser never sends to the server; the grade is computed in the page.
 - Remote code: No. All code ships in the package (Manifest V3, no eval, no remote scripts).
@@ -56,7 +56,7 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 - gauge.gershon.ai verified in Google Search Console and set as the official site
 
 ## Package and assets (ready)
-- Upload package: `dist/gauge-extension-0.3.0.zip` (built from `extension/`)
+- Upload package: `dist/gauge-extension-0.4.0.zip` (built from `extension/`)
 - Store icon: `store/assets/store-icon-128.png` (16/32/48/128 are inside the package)
 - Screenshots 1280×800: `store/assets/screenshot-1-report.png` (demo figures, not a real person), `store/assets/screenshot-2-consent.png`
 - Small promo tile 440×280: `store/assets/promo-small-440x280.png`
