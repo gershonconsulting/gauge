@@ -188,7 +188,7 @@ const REF_TTL = 60 * 60 * 24 * 30;
 const REF_RE = /^[a-z2-9]{8}$/;
 
 const score = (v) => (Number.isInteger(v) && v >= 0 && v <= 100 ? v : null);
-const LEVER_IDS = ['inmail', 'invites', 'savedAccounts', 'savedLeads', 'groups', 'find', 'engage', 'lists'];
+const LEVER_IDS = ['inmail', 'invites', 'savedAccounts', 'savedLeads', 'groups', 'find', 'engage', 'lists', 'pageVisitors'];
 
 // Same bands as site/score.js gradeFor (kept here so this worker stays a single file; a test checks they agree).
 export function gradeFor(v) {
