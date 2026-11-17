@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Gauge — Sales Navigator grader",
   "short_name": "Gauge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "See how much of your LinkedIn Sales Navigator capacity you use. One click, one grade. Read-only.",
   "homepage_url": "https://gauge.gershon.ai",
   "icons": {
