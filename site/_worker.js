@@ -640,13 +640,16 @@ async function adminPage(request, env) {
   return out;
 }
 
+// Keep equal to extension/manifest.json "version" (a test enforces it).
+export const APP_VERSION = '0.3.0';
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
     if (p === '/api/health') {
       const c = await cfg(env);
-      return json({ ok: true, app: 'gauge', linkedinSecretSet: !!c.clientSecret, sessionKeyReady: !!c.sessionSecret });
+      return json({ ok: true, app: 'gauge', version: APP_VERSION, linkedinSecretSet: !!c.clientSecret, sessionKeyReady: !!c.sessionSecret });
     }
     if (p === '/api/auth/linkedin/start') return start(request, env);
     if (p === '/api/auth/linkedin/callback') return callback(request, env);
