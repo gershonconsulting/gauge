@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const CONSENT_VERSION = 2; // 2: groups count added (v0.2.0)
+const CONSENT_VERSION = 3; // 2: groups count (v0.2.0), 3: company Page visitor count (v0.4.0)
 const LABEL = { waiting: 'waiting', reading: 'reading…', done: 'read', missing: 'not found' };
 const ERRORS = {
   signed_out: 'Please sign in to LinkedIn in this browser, then click Grade me again.',

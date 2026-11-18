@@ -1,10 +1,12 @@
 // Gauge — service worker. Runs only when the user clicks "Grade me" in the popup.
-// It opens the user's own LinkedIn pages one at a time in a single minimized window (so nothing
-// appears in the user's tab strip), reads the visible figures, closes that window, then opens the
-// Gauge report. If a minimized window cannot be created it falls back to one background tab.
-// No timers, no scheduled or automatic runs,
-// nothing is clicked, typed or sent on LinkedIn.
+// It opens the user's own LinkedIn pages one at a time in a single small window of its own, opened
+// behind the user's window (not minimized: LinkedIn only loads long lists such as sent invitations
+// while the page is rendered), reads the visible figures, closes that window, then opens the
+// Gauge report. If that window cannot be created it falls back to one background tab.
+// No timers, no scheduled or automatic runs. Nothing is typed or sent on LinkedIn; the only click
+// is on "Show more results" of the user's own groups list, which loads the rest of that list.
 import { parseSsi, parseInvitations, parseDashboard, parseContent, parseLists, parseSalesNav, parseGroups } from './parsers.js';
+import { parsePageVisitors, adminPageId, savedTotal } from './page-parsers.js';
 
 const REPORT_URL = 'https://gauge.gershon.ai/report';
 const LI = 'https://www.linkedin.com';
@@ -14,11 +16,20 @@ export const PAGES = [
   { key: 'invitations', label: 'Pending invitations', url: `${LI}/mynetwork/invitation-manager/sent/`, parse: parseInvitations, scroll: 50 },
   { key: 'dashboard', label: 'Your dashboard', url: `${LI}/dashboard/`, parse: parseDashboard },
   { key: 'content', label: 'Post results (90 days)', url: `${LI}/analytics/creator/content/?metricType=IMPRESSIONS&timeRange=past_90_days`, parse: parseContent },
-  { key: 'listsPeople', label: 'Lead lists', url: `${LI}/sales/lists/people`, parse: (t) => parseLists(t), scroll: 4 },
-  { key: 'listsCompany', label: 'Account lists', url: `${LI}/sales/lists/company`, parse: (t) => parseLists(t), scroll: 4 },
+  { key: 'listsPeople', label: 'Lead lists', url: `${LI}/sales/lists/people`, parse: readLists, scroll: 4 },
+  { key: 'listsCompany', label: 'Account lists', url: `${LI}/sales/lists/company`, parse: readLists, scroll: 4 },
   { key: 'salesnav', label: 'InMail credits', url: `${LI}/sales/settings`, parse: parseSalesNav },
   { key: 'groups', label: 'Your groups', url: `${LI}/groups/`, read: readGroups },
+  { key: 'page', label: 'Company Page visitors (Page admins only)', url: `${LI}/feed/`, read: readCompanyPage },
 ];
+
+// Lists plus the saved total, which the account lists page shows as "Search in saved accounts (N)".
+function readLists(text) {
+  const l = parseLists(text);
+  const total = l?.savedTotal ?? savedTotal(text);
+  if (!l) return total == null ? null : { lists: 0, updated30d: 0, items: 0, savedTotal: total };
+  return { ...l, savedTotal: total };
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let running = false;
@@ -76,11 +87,13 @@ function navigate(tabId, url, timeout = 20000) {
   });
 }
 
-// The reading surface: one minimized window with one tab, reused for every page. Returns the tab
-// id and a close() function. Background tab as a fallback (e.g. a browser that refuses minimized windows).
+// The reading surface: one small window with one tab, opened behind the user's window and reused for
+// every page. Not minimized: a minimized window is not rendered, so LinkedIn never loads the rest of
+// long lists (sent invitations came back short). Returns the tab id and a close() function.
+// Background tab as a fallback.
 export async function openReader() {
   try {
-    const win = await chrome.windows.create({ url: 'about:blank', state: 'minimized', type: 'normal' });
+    const win = await chrome.windows.create({ url: 'about:blank', state: 'normal', focused: false, type: 'normal', width: 520, height: 640, left: 0, top: 0 });
     const tabId = win.tabs?.[0]?.id ?? (await chrome.tabs.query({ windowId: win.id }))[0].id;
     return { tabId, mode: 'window', close: () => chrome.windows.remove(win.id).catch(() => {}) };
   } catch {
@@ -91,36 +104,71 @@ export async function openReader() {
 
 // One short injected call: scroll to the bottom and return the text of <main>. No timers run in the
 // page (timers in background tabs get throttled); the service worker does the waiting between calls.
-async function scrollAndRead(tabId) {
+async function scrollAndRead(tabId, more = false) {
   const [res] = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => {
+    args: [!!more],
+    func: (clickMore) => {
       window.scrollTo(0, document.body.scrollHeight);
       const main = document.querySelector('main');
-      return { text: (main || document.body)?.innerText || '', url: location.href };
+      for (const el of [document.scrollingElement, main]) if (el) el.scrollTop = el.scrollHeight;
+      let clicked = false;
+      if (clickMore) {
+        // Groups list only: LinkedIn loads 10 groups at a time behind "Show more results".
+        const b = [...document.querySelectorAll('button')].find((x) => /^\s*show more results\s*$/i.test(x.innerText || ''));
+        if (b && !b.disabled) { b.click(); clicked = true; }
+      }
+      return { text: (main || document.body)?.innerText || '', url: location.href, clicked };
     },
   });
   return res?.result || { text: '', url: '' };
 }
 
-// Groups lazy-load on scroll: keep scrolling until "Loading more results" is gone and the count
-// has not changed for two reads, or 45 seconds have passed. Only the count is kept.
+// Groups load 10 at a time: scroll and press "Show more results" until the button is gone and the
+// count has not changed for two reads, or 60 seconds have passed (100 groups = 10 presses).
+// Only the count is kept.
 async function readGroups(tabId) {
-  const deadline = Date.now() + 45000;
+  const deadline = Date.now() + 60000;
   let best = null;
   let stable = 0;
   while (Date.now() < deadline) {
-    const { text, url } = await scrollAndRead(tabId);
+    const { text, url, clicked } = await scrollAndRead(tabId, true);
     if (/\/(login|uas\/login|checkpoint|authwall)/.test(url)) return { error: 'signed_out' };
     const g = parseGroups(text);
     if (g) {
-      stable = best && g.joined === best.joined && !g.loading ? stable + 1 : 0;
+      stable = best && g.joined === best.joined && !g.loading && !clicked ? stable + 1 : 0;
       best = { joined: g.joined };
       if (stable >= 2) break;
     }
     await sleep(1200);
   }
   return best ? { data: best } : { error: 'not_found' };
+}
+
+// Company Page visitors: find a Page the user administers from the links on their own feed, then
+// read the 30-day visitor count on that Page's analytics. Not a Page admin = no reading, which
+// leaves the "Page visitors worked" lever out of the grade. Visitor names are never read.
+async function readCompanyPage(tabId) {
+  let id = null;
+  for (let i = 0; i < 6 && !id; i++) {
+    const [res] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => ({ hrefs: [...document.querySelectorAll('a[href*="/company/"]')].map((a) => a.getAttribute('href')), url: location.href }),
+    });
+    if (/\/(login|uas\/login|checkpoint|authwall)/.test(res?.result?.url || '')) return { error: 'signed_out' };
+    id = adminPageId(res?.result?.hrefs);
+    if (!id) await sleep(1500);
+  }
+  if (!id) return { data: { admin: false } };
+  await navigate(tabId, `${LI}/company/${id}/admin/analytics/visitors/`);
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    const { text } = await scrollAndRead(tabId);
+    const v = parsePageVisitors(text);
+    if (v) return { data: { admin: true, ...v } };
+    await sleep(1500);
+  }
+  return { data: { admin: true, visitors30d: null } };
 }
 
 // Sales Navigator fills its lists 8–12 s after load: wait for content, not a fixed delay.
@@ -155,9 +203,9 @@ async function readPage(page, tabId) {
 }
 
 async function grade() {
-  // Consent must cover the current list of figures (version 2 added the groups count).
+  // Consent must cover the current list of figures (2: groups count, 3: company Page visitor count).
   const stored = await chrome.storage.local.get(['consent', 'consentVersion']);
-  const consent = stored.consentVersion >= 2 ? stored.consent : null;
+  const consent = stored.consentVersion >= 3 ? stored.consent : null;
   if (!consent) return { error: 'no_consent' };
   if (running) return { error: 'busy' };
   running = true;
@@ -195,6 +243,7 @@ async function grade() {
         savedAccounts: out.listsCompany?.savedTotal ?? out.salesnav?.savedAccounts ?? null,
       },
       groups: out.groups,
+      page: out.page?.visitors30d != null ? { visitors30d: out.page.visitors30d } : null,
     };
     const d = encode(signals);
     await chrome.storage.local.set({ lastRead: signals.readAt });

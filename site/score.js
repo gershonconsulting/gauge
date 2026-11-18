@@ -1,5 +1,5 @@
 // Gauge — capacity model. Shared by the report page (browser) and the tests (Node).
-// "You are using X% of your Sales Navigator capacity": the average of up to eight levers, each 0–100%.
+// "You are using X% of your Sales Navigator capacity": the average of up to nine levers, each 0–100%.
 // Levers with no reading are left out of the average and listed as "not read".
 // A lever is only suggested as a move when it is below its target (70% is "well filled").
 // Targets and limits are Claude's first proposal (2026-11-14), not yet confirmed by Olivier.
@@ -70,6 +70,20 @@ export const LEVERS = [
     },
     move: 'Work half of your lists each month',
     why: 'Archive the dead lists and keep a handful live. Lists you never open are capacity you pay for and do not use.',
+  },
+  {
+    // Bonus lever: only Page admins have a reading; for everyone else it is left out of the average.
+    // Proxy (Claude's proposal 2026-11-17): invitations sent in a month (last week × 4) against the
+    // unique visitors your company Page had in 30 days. Visitor names are never read.
+    id: 'pageVisitors', group: 'work', name: 'Page visitors worked', target: 70,
+    read: (s) => {
+      const v = s.page?.visitors30d;
+      if (!v || !s.invitations?.read) return null;
+      return pct((s.invitations.under1w * 4) / v);
+    },
+    detail: (s) => `About ${s.invitations.under1w * 4} invitations a month for ${fmt(s.page.visitors30d)} Page visitors in 30 days`,
+    move: 'Follow up on the people who visit your Page',
+    why: 'Page visitors already know you. Find them in Sales Navigator and invite the ones who fit, every week.',
   },
 ];
 

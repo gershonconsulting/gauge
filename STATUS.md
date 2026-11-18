@@ -1,6 +1,6 @@
 # Gauge — status
 
-Updated: 2026-11-16 (pm) · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-17 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
@@ -53,3 +53,13 @@ Client ID `86rofazxdl07cq` (public). Redirect: `https://gauge.gershon.ai/api/aut
 ## Deploy route
 Cloudflare Pages, deploy root = `site/` (`_worker.js` advanced mode). Project `gauge-gershon-ai`. Then: secret (Production), optional KV `GAUGE_KV`, redeploy, custom domain `gauge.gershon.ai`, check `/api/health`.
 Whenever `extension/` changes: bump `version` in the manifest, run `node tools/build-extension.mjs` (a test fails if the site's latest.json and the manifest differ).
+
+- ✅ 2026-11-17 (branch `page-visitors`): 9th lever **Page visitors worked** (work group, bonus: only Page admins get a reading, otherwise left out of the average). Proxy = invitations last week × 4 ÷ company Page unique visitors (30 days), target 70. Extension v0.4.0 finds the first Page the user admins from `/company/<id>/admin` links on their feed, reads only the visitor count on `/company/<id>/admin/analytics/visitors/`. Consent v3, privacy + store text updated, worker accepts `pageVisitors`. 68 tests pass.
+- ❌ Page visitors reader not checked on a live Page analytics page (parser built from LinkedIn's "Unique visitors" / Premium "Page visitors" wording).
+- ❌ v0.4.0 must be uploaded to the Chrome Web Store (new review, data disclosure unchanged: website content). Deploy the site only after the store approves 0.4.0, otherwise store users are told they are "outdated".
+- ❌ Proxy formula is Claude's proposal; not yet confirmed by Olivier.
+- ❌ `dist/gauge-extension-0.4.0.zip` and `site/downloads/gauge-extension-0.4.0.zip` not yet on the branch (the GitHub connector cannot push binary files): run `node tools/build-extension.mjs` and commit both before merging; until then the release test fails on a fresh clone.
+
+- ✅ 2026-11-18 (branch `page-visitors`, PR #3, on Olivier's "All 3"): grade reader fixes — saved accounts total read from "Search in saved accounts (N)"; groups reader presses "Show more results" until all groups are listed (disclosed in consent, privacy, store pack); reading window is now a small unfocused window behind the user's (not minimized), so LinkedIn loads the full sent-invitations list. ❌ At merge time also set `APP_VERSION` in site/_worker.js to 0.4.0 (the health-version test fails on this branch until then, like the zip test).
+- ✅ 2026-11-18 (main, PR #6 merged f796055): campaign links `gauge.gershon.ai/?src=<name>` (e.g. `?src=spotlight`): 30-day `gauge_src` cookie, anonymous counters in KV `camp:<src>` (visit / report / signin / saved), `POST /api/event {type:"report"}` from the report page, member.src on sign-in, "Campaign links" table on /admin and in the daily email. Privacy policy updated. ❌ Not live until site/ is redeployed from main.
+- ❌ Daily email still needs `RESEND_API_KEY` pasted in Cloudflare Pages → gauge-gershon-ai → Settings → Variables and secrets (Production), then a redeploy.
