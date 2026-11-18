@@ -155,7 +155,15 @@ async function callback(request, env) {
   if (env.GAUGE_KV) {
     try {
       const [member, created] = await ensureMember(env.GAUGE_KV, { sub: me.sub, name: me.name, picture: me.picture, email: me.email });
-      if (created) await attribute(env.GAUGE_KV, member, cookies(request)[REF_COOKIE]);
+      if (created) {
+        await attribute(env.GAUGE_KV, member, cookies(request)[REF_COOKIE]);
+        const src = srcOf(request);
+        if (src) {
+          member.src = src;
+          await putJson(env.GAUGE_KV, `member:${member.id}`, member);
+          await bumpCampaign(env.GAUGE_KV, src, 'signin');
+        }
+      }
     } catch {} // storage trouble must never block sign-in
   }
   const next = cookies(request)[NEXT_COOKIE];
@@ -186,9 +194,52 @@ export const MIN_USERS_FOR_PERCENTILE = 20;
 const REF_COOKIE = 'gauge_ref';
 const REF_TTL = 60 * 60 * 24 * 30;
 const REF_RE = /^[a-z2-9]{8}$/;
+// Campaign tag: gauge.gershon.ai/?src=spotlight. Anonymous counters per tag, no personal data:
+//   camp:<src>  { visit, report, signin, saved, first, last }
+const SRC_COOKIE = 'gauge_src';
+const SRC_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
+export const CAMPAIGN_EVENTS = ['visit', 'report', 'signin', 'saved'];
+const srcOf = (request) => {
+  const v = cookies(request)[SRC_COOKIE];
+  return v && SRC_RE.test(v) ? v : null;
+};
+export async function bumpCampaign(kv, src, type) {
+  if (!kv || !src || !SRC_RE.test(src) || !CAMPAIGN_EVENTS.includes(type)) return false;
+  const c = (await getJson(kv, `camp:${src}`)) || { first: new Date().toISOString() };
+  c[type] = (c[type] || 0) + 1;
+  c.last = new Date().toISOString();
+  await putJson(kv, `camp:${src}`, c); // approximate under concurrent writes (KV has no transactions)
+  return true;
+}
+export async function campaigns(kv) {
+  const out = [];
+  let cursor;
+  for (let page = 0; page < 5; page++) {
+    const r = await kv.list({ prefix: 'camp:', cursor });
+    for (const k of r.keys) {
+      const c = await getJson(kv, k.name);
+      if (c) out.push({ src: k.name.slice(5), visit: c.visit || 0, report: c.report || 0, signin: c.signin || 0, saved: c.saved || 0, first: c.first || null, last: c.last || null });
+    }
+    if (r.list_complete || !r.cursor) break;
+    cursor = r.cursor;
+  }
+  return out.sort((a, b) => b.visit - a.visit || b.report - a.report);
+}
+
+// POST /api/event {type:"report"}: the report page opened with fresh figures. Counted only for
+// visitors who arrived through a campaign link (gauge_src cookie); nothing about the person is kept.
+async function campaignEvent(request, env) {
+  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'bad_request' }, 400); }
+  if (body?.type !== 'report') return json({ error: 'bad_request' }, 400);
+  const src = srcOf(request);
+  if (!src || !env.GAUGE_KV) return json({ counted: false });
+  return json({ counted: await bumpCampaign(env.GAUGE_KV, src, 'report') });
+}
 
 const score = (v) => (Number.isInteger(v) && v >= 0 && v <= 100 ? v : null);
-const LEVER_IDS = ['inmail', 'invites', 'savedAccounts', 'savedLeads', 'groups', 'find', 'engage', 'lists'];
+const LEVER_IDS = ['inmail', 'invites', 'savedAccounts', 'savedLeads', 'groups', 'find', 'engage', 'lists', 'pageVisitors'];
 
 // Same bands as site/score.js gradeFor (kept here so this worker stays a single file; a test checks they agree).
 export function gradeFor(v) {
@@ -325,6 +376,7 @@ export async function saveGrade(request, env) {
   m.tests = (m.tests || 0) + 1;
   await putJson(kv, `member:${s.sub}`, m);
 
+  if (firstTest && m.src) await bumpCampaign(kv, m.src, 'saved');
   if (firstTest && m.invitedBy) {
     const inv = (await getJson(kv, `invites:${m.invitedBy}`)) || { signedIn: [], graded: [] };
     if (!inv.graded.includes(s.sub)) {
@@ -470,12 +522,22 @@ export async function deleteMe(request, env) {
 
 // Landing page with ?ref=<code>: remember the inviter for 30 days in a first-party cookie.
 // The first inviter wins: an existing ref cookie is never replaced.
+// With ?src=<campaign>: remember the campaign for 30 days and count one visit (first visit only).
 async function landing(request, env) {
   const res = await env.ASSETS.fetch(request);
-  const ref = new URL(request.url).searchParams.get('ref');
-  if (!ref || !REF_RE.test(ref) || cookies(request)[REF_COOKIE]) return res;
+  const q = new URL(request.url).searchParams;
+  const ref = q.get('ref');
+  const src = (q.get('src') || '').toLowerCase();
+  const jar = cookies(request);
+  const add = [];
+  if (ref && REF_RE.test(ref) && !jar[REF_COOKIE]) add.push(setCookie(REF_COOKIE, ref, REF_TTL));
+  if (SRC_RE.test(src) && !jar[SRC_COOKIE]) {
+    add.push(setCookie(SRC_COOKIE, src, REF_TTL));
+    try { await bumpCampaign(env.GAUGE_KV, src, 'visit'); } catch {} // counting must never block the page
+  }
+  if (!add.length) return res;
   const out = new Response(res.body, res);
-  out.headers.append('Set-Cookie', setCookie(REF_COOKIE, ref, REF_TTL));
+  for (const c of add) out.headers.append('Set-Cookie', c);
   return out;
 }
 
@@ -560,7 +622,7 @@ async function adminSummary(request, env) {
   if (!env.GAUGE_KV) return noStorage();
   const sinceMs = Date.now() - 86400000;
   return json({ storage: true, emailReady: !!env.RESEND_API_KEY, lastReport: await env.GAUGE_KV.get('daily:last'),
-    ...summarize(await allMembers(env.GAUGE_KV), sinceMs) });
+    ...summarize(await allMembers(env.GAUGE_KV), sinceMs), campaigns: await campaigns(env.GAUGE_KV) });
 }
 
 async function adminMember(request, env) {
@@ -577,7 +639,15 @@ async function adminMember(request, env) {
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const etDay = (ms) => new Date(ms).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' });
 
-export function reportEmail(sum, sinceMs, nowMs) {
+function campaignTable(rows) {
+  if (!rows?.length) return '';
+  const td = 'style="padding:4px 10px 4px 0"';
+  return `<h3 style="margin:16px 0 4px">Campaign links (all time)</h3><table style="border-collapse:collapse;font-size:14px"><tr style="text-align:left;color:#555"><th ${td}>Campaign</th><th ${td}>Visits</th><th ${td}>Ran a test</th><th ${td}>Signed in</th><th>Saved a test</th></tr>${rows
+    .map((c) => `<tr><td ${td}>${esc(c.src)}</td><td ${td}>${c.visit}</td><td ${td}>${c.report}</td><td ${td}>${c.signin}</td><td>${c.saved}</td></tr>`)
+    .join('')}</table>`;
+}
+
+export function reportEmail(sum, sinceMs, nowMs, camps = []) {
   const a = etDay(sinceMs), b = etDay(nowMs);
   const range = a === b ? b : `${a} – ${b}`;
   const T = sum.totals, R = sum.recent;
@@ -594,6 +664,7 @@ export function reportEmail(sum, sinceMs, nowMs) {
 <h3 style="margin:16px 0 4px">Testers who shared their result</h3>${people}
 <p style="color:#555;font-size:13px">${R.tested - recentPeople.filter((p) => p.testedRecently).length > 0 ? `${R.tested - recentPeople.filter((p) => p.testedRecently).length} other tester(s) did not share their result and are only counted.` : ''}</p>
 <h3 style="margin:16px 0 4px">All time</h3><table>${line('Signed in', T.signedIn)}${line('Graded', T.graded)}${line('Tests run', T.tests)}${line('Average score', T.average == null ? '—' : T.average + '%')}${line('Grades A/B/C/D/F', `${T.grades.A}/${T.grades.B}/${T.grades.C}/${T.grades.D}/${T.grades.F}`)}${line('Came through an invite', T.invited)}${line('Shared with Gershon', T.shared)}</table>
+${campaignTable(camps)}
 <p style="margin-top:20px"><a href="${SITE}/admin" style="background:#FE1B04;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Open the Gauge admin</a></p></div>`;
   return { subject: `Gauge Report — ${range}`, html };
 }
@@ -613,7 +684,7 @@ async function adminDaily(request, env) {
     return json({ sent: false, skipped: 'already_sent', last: new Date(last).toISOString() });
   }
   const since = now - 86400000;
-  const mail = reportEmail(summarize(await allMembers(kv), since), since, now);
+  const mail = reportEmail(summarize(await allMembers(kv), since), since, now, await campaigns(kv));
   if (admin && q.get('preview') === '1') return json({ sent: false, preview: true, ...mail });
   if (!env.RESEND_API_KEY) return json({ sent: false, error: 'email_not_configured', subject: mail.subject });
   const r = await fetch('https://api.resend.com/emails', {
@@ -664,6 +735,7 @@ export default {
     if (p === '/api/invite') return invite(request, env);
     if (p === '/api/compare') return compare(request, env);
     if (p === '/api/delete-me') return deleteMe(request, env);
+    if (p === '/api/event') return campaignEvent(request, env);
     if (p === '/api/auth/logout') {
       if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
       return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SESSION_COOKIE, '', 0) });
