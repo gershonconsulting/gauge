@@ -26,11 +26,11 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 ## Privacy tab
 - Single purpose: Show the user a grade of how efficiently they use LinkedIn Sales Navigator, calculated from their own activity figures when they click "Grade me".
 - Permission justifications (the manifest requests exactly these, nothing else):
-  - `scripting`: after the user clicks "Grade me", read the visible figures on the user's own LinkedIn pages that Gauge opens in its own minimized window.
+  - `scripting`: after the user clicks "Grade me", read the visible figures on the user's own LinkedIn pages that Gauge opens in its own small window (opened behind the user's window, not focused). The only page interaction is pressing "Show more results" on the user's own groups list so all groups are counted.
   - `storage`: remember that the user accepted the data notice, and show reading progress in the popup.
   - Content script on `https://gauge.gershon.ai/*` only (`site-flag.js`): sets one attribute with the extension version on Gauge's own site so the site can show "installed / update available". It reads nothing and sends nothing. It never runs on LinkedIn or any other site.
   - Host access `https://www.linkedin.com/*`: the figures are on the user's own LinkedIn and Sales Navigator pages (SSI, sent invitations, dashboard, content analytics, groups list — count only, company Page visitor analytics — count only and only for Page admins, Sales Navigator lists and home).
-  - Not requested: `tabs`, `activeTab`, `cookies`, `webRequest`, `history`, `identity`, `<all_urls>`, no content scripts on any site other than gauge.gershon.ai. Opening and closing its own minimized window (fallback: one background tab) needs no extra permission.
+  - Not requested: `tabs`, `activeTab`, `cookies`, `webRequest`, `history`, `identity`, `<all_urls>`, no content scripts on any site other than gauge.gershon.ai. Opening and closing its own reading window (fallback: one background tab) needs no extra permission.
   - No host permission for gauge.gershon.ai is requested (the version flag above is a declared content script only): the report opens as a normal tab and the figures travel in the URL fragment (`#d=…`), which the browser never sends to the server; the grade is computed in the page.
 - Remote code: No. All code ships in the package (Manifest V3, no eval, no remote scripts).
 - Data collected (tick only these):
@@ -62,7 +62,7 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 - Small promo tile 440×280: `store/assets/promo-small-440x280.png`
 
 ## Reviewer notes (test instructions field)
-Be signed in to LinkedIn (an account with Sales Navigator gives the full report; without it, the Sales Navigator levers are listed as "not read"). Click the Gauge toolbar icon, accept the notice, click "Grade me". Gauge opens each page in one minimized window it creates, reads it, closes the window at the end, and after about two minutes opens the report at gauge.gershon.ai/report. Signing in at gauge.gershon.ai is optional; it saves the scores and opens the Gauge app (gauge.gershon.ai/app: dashboard, history, compare, invite, share, extension status, settings with "Delete my data"). The Extension page there shows the installed version, read from the attribute the `site-flag.js` content script sets.
+Be signed in to LinkedIn (an account with Sales Navigator gives the full report; without it, the Sales Navigator levers are listed as "not read"). Click the Gauge toolbar icon, accept the notice, click "Grade me". Gauge opens each page in one small window it creates behind the user's window, reads it, closes the window at the end, and after about two minutes opens the report at gauge.gershon.ai/report. Signing in at gauge.gershon.ai is optional; it saves the scores and opens the Gauge app (gauge.gershon.ai/app: dashboard, history, compare, invite, share, extension status, settings with "Delete my data"). The Extension page there shows the installed version, read from the attribute the `site-flag.js` content script sets.
 
 ## Known review risk
 Gauge reads LinkedIn pages; LinkedIn's terms restrict third-party extensions. Mitigations: own figures only, read-only, click-to-run, no affiliation claim. Fallback if rejected: no-extension version (SSI screenshot + questions).
