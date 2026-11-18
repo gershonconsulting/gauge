@@ -22,3 +22,10 @@ export function adminPageId(hrefs) {
   }
   return null;
 }
+
+// Saved leads/accounts total. Sales Navigator shows it as "All saved leads (7441)" or, on the
+// account lists page, "Search in saved accounts (10000)". Only the number is kept.
+export function savedTotal(text) {
+  const m = String(text || '').match(/(?:all|search in)\s+saved\s+(?:leads|accounts)\s*\((\d[\d,]*)\)/i);
+  return m ? Number(m[1].replace(/,/g, '')) : null;
+}
