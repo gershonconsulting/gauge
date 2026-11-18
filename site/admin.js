@@ -28,6 +28,7 @@ async function load() {
     const d = el('div'); const i = el('i'); i.style.height = `${(70 * n) / max}px`; d.append(i, `${g} · ${n}`); return d;
   }));
   $('grades-card').hidden = T.graded === 0;
+  campaignCard(s.campaigns || []);
 
   if (!s.people.length) { $('people').replaceChildren(el('p', 'muted', 'Nobody has shared their result yet.')); return; }
   const table = el('table');
@@ -49,7 +50,30 @@ async function load() {
   $('people').replaceChildren(table);
 }
 
-const LEVERS = { inmail: 'InMail', invites: 'Invitations', savedAccounts: 'Saved accounts', savedLeads: 'Saved leads', groups: 'Groups', find: 'SSI find', engage: 'SSI engage', lists: 'Lists' };
+// Campaign links: gauge.gershon.ai/?src=<name>. Anonymous counts per link.
+function campaignCard(rows) {
+  let card = $('campaigns');
+  if (!card) {
+    card = el('div', 'card'); card.id = 'campaigns';
+    $('grades-card').before(card);
+  }
+  const head = el('div');
+  head.append(el('h2', null, 'Campaign links'),
+    el('p', 'muted small', 'Share gauge.gershon.ai/?src=NAME (for example ?src=spotlight). Visits count first visits; "ran a test" counts reports opened by those visitors, signed in or not.'));
+  if (!rows.length) { card.replaceChildren(head, el('p', 'muted', 'No campaign link has been used yet.')); return; }
+  const t = el('table'); const h = el('tr');
+  for (const c of ['Campaign', 'Visits', 'Ran a test', 'Signed in', 'Saved a test', 'Visit → test', 'Last activity']) h.append(el('th', null, c));
+  t.append(h);
+  for (const c of rows) {
+    const tr = el('tr');
+    tr.append(el('td', null, c.src), el('td', null, String(c.visit)), el('td', null, String(c.report)), el('td', null, String(c.signin)),
+      el('td', null, String(c.saved)), el('td', null, c.visit ? Math.round((100 * c.report) / c.visit) + '%' : '—'), el('td', null, day(c.last)));
+    t.append(tr);
+  }
+  card.replaceChildren(head, t);
+}
+
+const LEVERS = { inmail: 'InMail', invites: 'Invitations', savedAccounts: 'Saved accounts', savedLeads: 'Saved leads', groups: 'Groups', find: 'SSI find', engage: 'SSI engage', lists: 'Lists', pageVisitors: 'Page visitors' };
 async function detail(id) {
   const [r, d] = await getJson('/api/admin/member?id=' + encodeURIComponent(id));
   if (!r.ok) return;

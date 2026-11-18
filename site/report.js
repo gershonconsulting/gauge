@@ -28,6 +28,8 @@ if (!r || r.overall == null) {
   render(r, signals);
   $('report').hidden = false;
   save(r);
+  // Anonymous campaign count: only fresh figures (not a reload), only if the visitor came via ?src=.
+  if (m) fetch('/api/event', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'report' }) }).catch(() => {});
 }
 
 function tone(v) { return v >= 70 ? 'good' : v >= 45 ? 'warn' : 'bad'; }
