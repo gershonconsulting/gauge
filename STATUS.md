@@ -1,12 +1,13 @@
 # Gauge — status
 
-Updated: 2026-11-17 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-19 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
 First Gershon app to go through Chrome Web Store review.
 
 ## State
+- Version 2026-11-19: main = 0.4.0 (PR #3 merged: extension 0.4.0, APP_VERSION 0.4.0 in site/_worker.js). LIVE gauge.gershon.ai/api/health = 0.3.0. Direct-upload Pages project, not deployed. Deploy = Pages upload of site/ once the Chrome Web Store approves extension 0.4.0 (still in review).
 - ✅ Site: landing, LinkedIn sign-in (`openid profile email` only), `/report`, `/api/grade`, privacy/terms/support
 - ✅ Extension v0.3.0 (`extension/`, MV3): consent screen (v2) → "Grade me" → opens 8 own-LinkedIn pages one at a time in ONE minimized window (fallback: background tab), reads figures, closes the window → opens `/report#d=…`. Permissions: `scripting`, `storage`, host `www.linkedin.com`; `site-flag.js` content script on gauge.gershon.ai only (sets the installed version). Build: `node tools/build-extension.mjs` → `dist/` + `site/downloads/` + `site/extension-latest.json`.
 - ✅ Capacity model in `site/score.js` (8 levers incl. **Groups joined** = groups ÷ 100, fill/work/overall, grade, top-3 moves). Reproduces the prototype (66/94/29/C+) and the reading with groups (62/81/29/C).
