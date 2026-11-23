@@ -2,6 +2,7 @@
 // Hash routes (#dashboard …). Everything is built with textContent; no external scripts, fonts or images
 // (member photos are shown only for members who opted in, from the address LinkedIn gave at sign-in).
 import { fromLevers } from '/score.js';
+import { leverList, moveCard } from '/levers-ui.js';
 import { levelFor, weeklyStreak, isPersonalBest, personalBest, inviteBadges, extensionState, compareVersions } from '/game.js';
 
 const PAGES = ['dashboard', 'history', 'compare', 'invite', 'share', 'extension', 'settings'];
@@ -83,7 +84,10 @@ function isChromium() {
   return /Chrome\/|Chromium\/|Edg\//.test(navigator.userAgent) && !/Firefox\//.test(navigator.userAgent);
 }
 // The extension's content script (gauge.gershon.ai only) sets data-gauge-ext="<version>".
-function installedVersion(wait = 1200) {
+// Chrome only injects it into pages loaded AFTER the extension is installed, so a tab that was open
+// during the install never sees it. Fixes: wait longer, keep listening, and reload once the user comes
+// back to this tab after going to the Chrome Web Store.
+function installedVersion(wait = 2500) {
   const now = document.documentElement.dataset.gaugeExt;
   if (now) return Promise.resolve(now);
   return new Promise((resolve) => {
@@ -93,10 +97,72 @@ function installedVersion(wait = 1200) {
     setTimeout(() => done(document.documentElement.dataset.gaugeExt), wait);
   });
 }
+const WAIT_KEY = 'gauge_wait_install';
+function markStoreVisit(a) {
+  a.addEventListener('click', () => { try { sessionStorage.setItem(WAIT_KEY, '1'); } catch {} });
+  return a;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  let waiting = false;
+  try { waiting = sessionStorage.getItem(WAIT_KEY) === '1'; } catch {}
+  if (waiting && !document.documentElement.dataset.gaugeExt) location.reload();
+});
+document.addEventListener('gauge-ext', () => {
+  try { sessionStorage.removeItem(WAIT_KEY); } catch {}
+  if (state.me) route();
+});
 async function extInfo() {
   const [latest, installed] = await Promise.all([loadLatest(), installedVersion()]);
+  if (installed) { try { sessionStorage.removeItem(WAIT_KEY); } catch {} }
   const chromium = isChromium();
-  return { latest, installed, chromium, state: extensionState({ chromium, installed, latest: latest?.version || '0' }) };
+  // Store users can only have what the store has published: compare with that, not with a build
+  // that is still in review, otherwise everyone who installed from the store is told "outdated".
+  const target = (latest?.storeUrl && latest?.storeVersion) || latest?.version || '0';
+  return { latest, installed, chromium, target, state: extensionState({ chromium, installed, latest: target }) };
+}
+const canSync = () => document.documentElement.dataset.gaugeSync === '1';
+
+// "Sync now": asks the extension (v0.5.0+) to run the same reading as "Grade me". The report opens
+// in a new tab when it is done; the user stays in control (nothing runs without this click).
+function syncButton(label = 'Sync now') {
+  const wrap = el('div', 'sync');
+  const b = el('button', 'btn', label);
+  b.type = 'button';
+  const msg = el('p', 'muted small');
+  const ERR = {
+    no_consent: 'The Gauge notice opened in a new tab: read it, click "I agree", then press "Grade me" there.',
+    signed_out: 'Sign in to LinkedIn in this browser, then press Sync now again.',
+    busy: 'Gauge is already reading your pages — the report will open by itself.',
+    cancelled: 'The reading window was closed, so the sync stopped. Press Sync now to start again.',
+  };
+  b.addEventListener('click', () => {
+    b.disabled = true;
+    msg.textContent = 'Syncing… Gauge opens your LinkedIn pages in a small window behind this one (about 2 minutes). Your report opens in a new tab when it is done.';
+    const on = (e) => {
+      document.removeEventListener('gauge-sync-result', on);
+      let r = {};
+      try { r = JSON.parse(e.detail); } catch {}
+      b.disabled = false;
+      if (r.ok) { msg.textContent = 'Done — your report is open in a new tab. Refresh this page to see it on your dashboard.'; drop('history', 'compare'); }
+      else msg.textContent = ERR[r.error] || 'The sync did not finish. Click the Gauge icon in your toolbar and press "Grade me".';
+    };
+    document.addEventListener('gauge-sync-result', on);
+    document.dispatchEvent(new CustomEvent('gauge-sync'));
+  });
+  wrap.append(b, msg);
+  return wrap;
+}
+function howToRun() {
+  const ol = el('ol', 'steps');
+  for (const t of [
+    'Pin Gauge: click the puzzle-piece icon at the top right of Chrome, then the pin next to "Gauge". The red Gauge icon now stays in your toolbar.',
+    'Make sure you are signed in to LinkedIn (and Sales Navigator) in this browser.',
+    'Click the Gauge icon, read the short notice and click "I agree" (first time only).',
+    'Click "Grade me". Gauge opens your own LinkedIn pages in a small window behind yours for about 2 minutes, then closes it.',
+    'Your report opens. While you are signed in here, it is saved and appears on this dashboard.',
+  ]) ol.append(el('li', null, t));
+  return ol;
 }
 
 // ---------------------------------------------------------------- dashboard
@@ -124,26 +190,6 @@ function dial(overall, grade) {
   d.append(svg);
   return d;
 }
-function leverBars(levers) {
-  const box = el('div');
-  for (const [group, title] of [['fill', 'What you fill'], ['work', 'What you work']]) {
-    const items = levers.filter((l) => l.group === group && l.value != null);
-    if (!items.length) continue;
-    box.append(el('p', 'group', title));
-    for (const l of items) {
-      const row = el('div', 'lever');
-      const what = el('div');
-      what.append(el('b', null, l.name), el('span', null, `Target ${l.target}%`));
-      const track = el('div', 'track');
-      const f = el('div', 'fill ' + tone(l.value));
-      f.style.width = l.value + '%';
-      track.append(f);
-      row.append(what, track, el('span', 'val num', l.value + '%'));
-      box.append(row);
-    }
-  }
-  return box;
-}
 function stat(big, label, cls) {
   const s = el('div', 'stat');
   const b = el('b', cls || null);
@@ -161,7 +207,7 @@ async function extBanner() {
   if (info.state === 'outdated') {
     const a = el('a', 'btn small', 'Update');
     a.href = '#extension';
-    b.append(el('p', null, `An update of the Gauge extension is available: you have v${info.installed}, the latest is v${info.latest?.version}.`), a);
+    b.append(el('p', null, `An update of the Gauge extension is available: you have v${info.installed}, the latest is v${info.target}.`), a);
     b.hidden = false;
     return;
   }
@@ -170,7 +216,7 @@ async function extBanner() {
   const latest = info.latest;
   const actions = el('div', 'actions');
   if (latest?.storeUrl) {
-    const s = el('a', 'btn', 'Add Gauge to Chrome'); s.href = latest.storeUrl; s.target = '_blank'; s.rel = 'noopener';
+    const s = markStoreVisit(el('a', 'btn', 'Add Gauge to Chrome')); s.href = latest.storeUrl; s.target = '_blank'; s.rel = 'noopener';
     actions.append(s);
   } else if (latest?.download) {
     const d = el('a', 'btn', `Download the Chrome extension now (v${latest.version})`);
@@ -179,13 +225,17 @@ async function extBanner() {
   }
   const how = el('a', 'btn line small', 'How to install');
   how.href = '#extension';
-  actions.append(how);
+  const again = el('button', 'btn line small', 'I installed it — check again');
+  again.type = 'button';
+  again.addEventListener('click', () => location.reload());
+  actions.append(how, again);
   append(b,
     el('span', 'step', 'Step 1 of 2'),
     el('h2', null, 'Download the Gauge Chrome extension now'),
     el('p', 'lead', 'The extension is what collects your Sales Navigator figures: SSI, invitations, InMails, lists, posts and groups. Without it there is nothing to grade.'),
     el('p', 'muted', 'It runs only when you press "Grade me", reads your own LinkedIn pages in your own browser, and never clicks, sends or posts anything.'),
-    actions);
+    actions,
+    el('p', 'muted small', 'Installed in another Chrome profile or browser? Open gauge.gershon.ai in that one: Gauge can only see the extension in the browser it is installed in.'));
   b.hidden = false;
 }
 
@@ -235,28 +285,37 @@ async function renderDashboard(box) {
   hero.append(dial(latest.overall, latest.grade), right);
   out.push(hero);
 
+  out.push(lastSyncCard(latest.at));
   if (r.levers.some((l) => l.value != null)) {
-    out.push(card(el('h2', null, 'Capacity, lever by lever'), el('p', 'muted', 'Each bar is what you use against what Sales Navigator gives you'), leverBars(r.levers)));
+    out.push(card(el('h2', null, 'Capacity, lever by lever'), el('p', 'muted', 'Each bar is what you use against what Sales Navigator gives you. Click a line to open that page on LinkedIn.'), leverList(r.levers)));
   }
   if (r.moves.length) {
     const moves = el('div', 'moves');
-    for (const mv of r.moves) {
-      const d = el('div', 'move');
-      d.append(el('span', 'gain num', `+${mv.gain} pts`), el('b', null, mv.title), el('span', null, mv.why));
-      moves.append(d);
-    }
+    for (const mv of r.moves) moves.append(moveCard(mv));
     out.push(card(el('h2', null, 'Three moves that add the most'), moves));
   }
   box.replaceChildren(...out);
 }
 function firstTestCard() {
-  const c = card(el('h2', null, 'Run your first test'));
-  const ol = el('ol', 'steps');
-  for (const t of ['Install the Gauge extension (see the Extension page).', 'Open LinkedIn in this browser, click the Gauge icon in your toolbar and press "Grade me".', 'Your report opens. While you are signed in here, the result is saved and shows up on this dashboard.'])
-    ol.append(el('li', null, t));
-  const a = el('a', 'btn small', 'Go to the Extension page');
+  const c = card(el('span', 'step', 'Step 2 of 2'), el('h2', null, 'Run your first sync'),
+    el('p', 'lead', 'The extension is installed, but it has not read anything yet. Gauge never runs on its own: it reads your figures only when you ask, so start the first sync now.'));
+  if (canSync()) c.append(syncButton('Sync now — grade my Sales Navigator'), el('p', 'muted small', 'Or do it from the extension:'));
+  c.append(howToRun());
+  const a = el('a', 'btn line small', 'Extension status');
   a.href = '#extension';
-  c.append(ol, append(el('div', 'actions'), a));
+  c.append(append(el('div', 'actions'), a));
+  return c;
+}
+function lastSyncCard(at) {
+  const days = Math.floor((Date.now() - new Date(at)) / 86400000);
+  const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+  const c = el('section', 'card syncbar' + (days >= 7 ? ' stale' : ''));
+  const txt = el('div');
+  txt.append(el('b', null, `Last sync: ${fmtDate(at)} (${when})`),
+    el('span', 'muted small', days >= 7 ? ' · Your figures are over a week old. Sync once a week to keep your streak and see your progress.' : ' · Gauge syncs only when you ask. Once a week is enough.'));
+  c.append(txt);
+  if (canSync()) c.append(syncButton());
+  else c.append(el('span', 'muted small', 'To sync: click the Gauge icon in your Chrome toolbar → "Grade me".'));
   return c;
 }
 
@@ -311,16 +370,33 @@ async function renderHistory(box) {
   tbl.append(append(el('thead'), head));
   const body = el('tbody');
   for (const it of items) {
-    const tr = el('tr', it === best ? 'best' : null);
+    const tr = el('tr', 'clickable' + (it === best ? ' best' : ''));
+    tr.tabIndex = 0;
+    tr.title = 'Show the detail of this test';
     const pct = (v) => (v == null ? '—' : v + '%');
     tr.append(el('td', null, fmtDate(it.at)), el('td', null, pct(it.overall)), el('td', 'hide-sm', pct(it.fill)), el('td', 'hide-sm', pct(it.work)), el('td', null, it.grade));
     const tag = el('td');
     if (it === best) tag.append(el('span', 'badge', 'Best'));
     tr.append(tag);
-    body.append(tr);
+    const detail = el('tr', 'detail');
+    detail.hidden = true;
+    const td = el('td');
+    td.colSpan = 6;
+    detail.append(td);
+    const toggle = () => {
+      if (!td.childElementCount) {
+        const r = fromLevers(it.levers);
+        td.append(leverList(r.levers));
+        if (r.moves.length) td.append(append(el('div', 'moves'), ...r.moves.map(moveCard)));
+      }
+      detail.hidden = !detail.hidden;
+    };
+    tr.addEventListener('click', toggle);
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    body.append(tr, detail);
   }
   tbl.append(body);
-  box.replaceChildren(chartCard, card(el('h2', null, 'Every test'), append(el('div', 'tbl-wrap'), tbl)));
+  box.replaceChildren(chartCard, card(el('h2', null, 'Every test'), el('p', 'muted small', 'Click a test to see its levers; each line opens the LinkedIn page it comes from.'), append(el('div', 'tbl-wrap'), tbl)));
 }
 
 // ---------------------------------------------------------------- compare
@@ -393,20 +469,53 @@ async function renderInvite(box) {
 async function renderShare(box) {
   const [h, i] = await Promise.all([load('history', '/api/history'), load('invite', '/api/invite')]);
   if (!h.ok || !i.ok) return box.replaceChildren(errorCard());
-  if (h.body.storage === false || i.body.storage === false) return box.replaceChildren(noStorageCard('your share card'));
+  const link = i.body.link || 'https://gauge.gershon.ai';
   const latest = (h.body.items || [])[0];
-  if (!latest) return box.replaceChildren(firstTestCard());
-  const text = `I use ${latest.overall}% of my Sales Navigator capacity — grade ${latest.grade}. What's yours?`;
-  const full = `${text} ${i.body.link}`;
+  const post = sharePost(latest, link);
   const sc = el('div', 'sharecard');
-  sc.append(el('span', 'big', latest.overall + '%'), append(el('div'), el('p', null, text), el('span', 'muted small', i.body.link)));
-  const li = el('a', 'btn small', 'Share on LinkedIn');
-  li.href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(i.body.link);
-  li.target = '_blank';
-  li.rel = 'noopener';
-  const c = card(el('h2', null, 'Your share card'), sc, append(el('div', 'actions'), copyButton(() => full, 'Copy text'), li),
-    el('p', 'muted small', 'LinkedIn opens its own share window with your invite link; you write and post the message yourself. Gauge never posts for you.'));
+  if (latest) sc.append(el('span', 'big', latest.overall + '%'));
+  const ta = el('textarea', 'sharetext');
+  ta.value = post;
+  ta.rows = 14;
+  ta.setAttribute('aria-label', 'Your LinkedIn post, edit it as you like');
+  sc.append(ta);
+  const li = el('button', 'btn small', 'Post it on LinkedIn');
+  li.type = 'button';
+  const note = el('p', 'muted small', 'Clicking copies the text and opens LinkedIn\'s own post box with it filled in. Check it, then press Post on LinkedIn. Gauge never posts for you.');
+  li.addEventListener('click', async () => {
+    const text = ta.value;
+    try { await navigator.clipboard.writeText(text); } catch {}
+    window.open('https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(text), '_blank', 'noopener');
+    note.textContent = 'LinkedIn is open in a new tab with your post. If the box is empty, click "Start a post" and paste (Ctrl+V): the text is already copied.';
+  });
+  const c = card(el('h2', null, 'Tell your network why you measure your Sales Navigator ROI'),
+    el('p', 'muted', latest ? 'A ready-to-post message with your score and your invite link. Edit it freely.' : 'A ready-to-post message about Gauge with your invite link. Run your first sync to add your own score.'),
+    sc, append(el('div', 'actions'), li, copyButton(() => ta.value, 'Copy text')), note);
   box.replaceChildren(c);
+}
+function sharePost(latest, link) {
+  const head = latest
+    ? `I just measured my Sales Navigator ROI: I use ${latest.overall}% of the capacity I pay for (grade ${latest.grade}).`
+    : 'How much of your Sales Navigator are you actually using?';
+  return [
+    head,
+    '',
+    'Sales Navigator is one of the most expensive seats in a sales stack, and most of us never check what we get for it.',
+    '',
+    'Gauge (by Gershon Consulting) measures it in one click, from your own LinkedIn figures:',
+    '• InMail credits used before they expire',
+    '• Connection invitations sent per week',
+    '• Saved leads and accounts, groups joined',
+    '• SSI: finding the right people, engaging with insights',
+    '• Lists you actually keep working',
+    '',
+    'You get one percentage, a grade, and the three moves that add the most. Free, read-only, nothing is posted or sent for you.',
+    '',
+    latest ? 'What is your score? Measure yours here:' : 'Measure yours here:',
+    link,
+    '',
+    '#SalesNavigator #SocialSelling #B2BSales #LinkedIn',
+  ].join('\n');
 }
 
 function legalCard() {
@@ -430,21 +539,21 @@ async function renderExtension(box) {
   const labels = {
     unsupported: ['bad', 'Can’t check on this browser — Gauge works in Chrome and other Chromium browsers (Edge, Brave).'],
     missing: ['bad', 'Not installed'],
-    outdated: ['warn', `Update available (you have v${info.installed}, latest is v${latest?.version})`],
+    outdated: ['warn', `Update available (you have v${info.installed}, latest is v${info.target})`],
     current: ['ok', `Installed — up to date (v${info.installed})`],
   };
   const [cls, label] = labels[info.state];
   dot.classList.add(cls);
   line.append(dot, el('span', null, label));
   s.append(line);
-  if (info.state === 'current' && latest && compareVersions(info.installed, latest.version) > 0) s.append(el('p', 'muted small', 'You have a newer build than the site lists.'));
+  if (info.state === 'current' && compareVersions(info.installed, info.target) > 0) s.append(el('p', 'muted small', 'You have a newer build than the site lists.'));
   out.push(s);
 
   const g = card(el('h2', null, info.state === 'outdated' ? 'Update the extension' : 'Get the extension'));
   const actions = el('div', 'actions');
   const store = latest?.storeUrl;
   if (store) {
-    const a = el('a', 'btn small', 'Add to Chrome'); a.href = store; a.target = '_blank'; a.rel = 'noopener';
+    const a = markStoreVisit(el('a', 'btn small', 'Add to Chrome')); a.href = store; a.target = '_blank'; a.rel = 'noopener';
     actions.append(a);
   } else {
     const a = el('span', 'btn line small', 'Chrome Web Store');

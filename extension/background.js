@@ -1,9 +1,9 @@
-// Gauge — service worker. Runs only when the user clicks "Grade me" in the popup.
+// Gauge — service worker. Runs only when the user clicks "Grade me" in the popup or "Sync now" on gauge.gershon.ai.
 // It opens the user's own LinkedIn pages one at a time in a single small window of its own, opened
 // behind the user's window (not minimized: LinkedIn only loads long lists such as sent invitations
 // while the page is rendered), reads the visible figures, closes that window, then opens the
 // Gauge report. If that window cannot be created it falls back to one background tab.
-// No timers, no scheduled or automatic runs. Nothing is typed or sent on LinkedIn; the only click
+// No timers, no scheduled or automatic runs: every reading is started by a click of the user. Nothing is typed or sent on LinkedIn; the only click
 // is on "Show more results" of the user's own groups list, which loads the rest of that list.
 import { parseSsi, parseInvitations, parseDashboard, parseContent, parseLists, parseSalesNav, parseGroups } from './parsers.js';
 import { parsePageVisitors, adminPageId, savedTotal } from './page-parsers.js';
@@ -262,10 +262,23 @@ function encode(obj) {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// First install only: open the Gauge welcome page, which says what to do next (pin the icon, accept
+// the notice, press Grade me). Updates do not open anything.
+if (typeof chrome !== 'undefined' && chrome.runtime?.onInstalled) {
+  chrome.runtime.onInstalled.addListener((d) => {
+    if (d.reason === 'install') chrome.tabs.create({ url: 'https://gauge.gershon.ai/app?installed=1#dashboard' });
+  });
+}
+
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === 'grade') {
-      grade().then(reply);
+      grade().then(async (r) => {
+        // Started from the "Sync now" button on gauge.gershon.ai before the notice was accepted:
+        // open the notice in a tab so the user can read and accept it (nothing is read before that).
+        if (r?.error === 'no_consent' && msg.from === 'site') await chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
+        reply(r);
+      });
       return true;
     }
     return false;

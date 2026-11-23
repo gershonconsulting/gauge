@@ -39,3 +39,10 @@ main.report{display:flex;flex-direction:column;gap:20px;max-width:1040px}
 @media(max-width:860px){.rhero{grid-template-columns:1fr}.moves{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.lever{grid-template-columns:1fr 48px}.lever .track{grid-column:1/-1}.split,.kpis{grid-template-columns:1fr}}
 #report{display:flex;flex-direction:column;gap:20px}
+a.lever-link{color:inherit;text-decoration:none;border-radius:8px;transition:background .15s}
+a.lever-link:hover{background:#fff4f2}
+a.lever-link .fix{display:block;color:#FE1B04;font-size:12.5px;margin-top:2px}
+a.lever-link.notread b{color:var(--muted)}
+a.move-link{color:inherit;text-decoration:none}
+a.move-link:hover{border-color:#FE1B04}
+.move .go{color:#FE1B04;font-weight:600;font-size:12.5px;margin-top:auto}

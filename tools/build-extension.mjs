@@ -40,6 +40,8 @@ const latest = {
   publishedAt: new Date().toISOString().slice(0, 10),
   download: `/downloads/${name}`,
   storeUrl: prev.storeUrl || '',
+  // Version live on the Chrome Web Store (set by hand when the store approves a version).
+  storeVersion: prev.storeVersion || '',
 };
 writeFileSync(latestPath, JSON.stringify(latest, null, 2) + '\n');
 console.log(`Built ${name} (${files.length} files) → dist/ and site/downloads/; site/extension-latest.json → ${version}`);

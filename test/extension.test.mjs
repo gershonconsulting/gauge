@@ -76,7 +76,11 @@ test('manifest stays narrow for Chrome Web Store review', () => {
   assert.deepEqual(manifest.content_scripts, [{ matches: ['https://gauge.gershon.ai/*'], js: ['site-flag.js'], run_at: 'document_start' }]);
   const flag = readFileSync(new URL('../extension/site-flag.js', import.meta.url), 'utf8');
   assert.ok(/dataset\.gaugeExt\s*=/.test(flag) && flag.includes("'gauge-ext'"));
-  assert.ok(!/innerText|textContent|innerHTML|querySelector|sendMessage|chrome\.storage|fetch\(/.test(flag.replace(/^\s*\/\/.*$/gm, '')), 'site flag must not read the page or talk to anything');
+  const code = flag.replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/innerText|textContent|innerHTML|querySelector|chrome\.storage|fetch\(/.test(code), 'site flag must not read the page or store anything');
+  // Its only message is the user's "Sync now" click, relayed as the same request as "Grade me".
+  const sends = code.match(/sendMessage\([^)]*\)/g) || [];
+  assert.deepEqual(sends, ["sendMessage({ type: 'grade', from: 'site' })"]);
   for (const s of [16, 32, 48, 128]) assert.ok(readdirSync(new URL('../extension/icons/', import.meta.url)).includes(`icon${s}.png`));
 });
 
