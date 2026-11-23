@@ -712,7 +712,7 @@ async function adminPage(request, env) {
 }
 
 // Keep equal to extension/manifest.json "version" (a test enforces it).
-export const APP_VERSION = '0.4.0';
+export const APP_VERSION = '0.5.0';
 
 export default {
   async fetch(request, env) {

@@ -1,6 +1,6 @@
 # Gauge — status
 
-Updated: 2026-11-19 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-23 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
@@ -64,3 +64,6 @@ Whenever `extension/` changes: bump `version` in the manifest, run `node tools/b
 - ✅ 2026-11-18 (branch `page-visitors`, PR #3, on Olivier's "All 3"): grade reader fixes — saved accounts total read from "Search in saved accounts (N)"; groups reader presses "Show more results" until all groups are listed (disclosed in consent, privacy, store pack); reading window is now a small unfocused window behind the user's (not minimized), so LinkedIn loads the full sent-invitations list. ❌ At merge time also set `APP_VERSION` in site/_worker.js to 0.4.0 (the health-version test fails on this branch until then, like the zip test).
 - ✅ 2026-11-18 (main, PR #6 merged f796055): campaign links `gauge.gershon.ai/?src=<name>` (e.g. `?src=spotlight`): 30-day `gauge_src` cookie, anonymous counters in KV `camp:<src>` (visit / report / signin / saved), `POST /api/event {type:"report"}` from the report page, member.src on sign-in, "Campaign links" table on /admin and in the daily email. Privacy policy updated. ❌ Not live until site/ is redeployed from main.
 - ❌ Daily email still needs `RESEND_API_KEY` pasted in Cloudflare Pages → gauge-gershon-ai → Settings → Variables and secrets (Production), then a redeploy.
+
+- ✅ 2026-11-23 (extension 0.5.0 + site): install detection fixed (Chrome does not inject the flag script into tabs open during install → wait 2.5 s, keep listening, auto-reload when the user comes back from the store, "I installed it — check again" button, other-profile hint); "outdated" now compares with `storeVersion` in extension-latest.json (set by hand to the version live on the store, now 0.3.0) so store users are not nagged during a review. Step 2 "Run your first sync" card with pin/notice/Grade me steps; "Last sync" bar (stale after 7 days). Every lever line, move and "not read" item links to its LinkedIn page (`site/levers-ui.js`, `source` per lever in score.js); history rows expand. Share page writes a full ROI post + opens LinkedIn's composer prefilled. Extension 0.5.0: opens the welcome page on first install; site "Sync now" relayed by site-flag.js as the same `grade` request (consent still required; notice opens in a tab if missing). No new permissions.
+- ❌ 0.5.0 must replace 0.4.0 in the Chrome Web Store review (cancel the 0.4.0 review, upload dist/gauge-extension-0.5.0.zip). After approval set `storeVersion` to 0.5.0 and redeploy. Sync now only shows for 0.5.0+.

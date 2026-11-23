@@ -24,7 +24,7 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 - Mature content: No · Ads: No · Payments: None
 
 ## Privacy tab
-- Single purpose: Show the user a grade of how efficiently they use LinkedIn Sales Navigator, calculated from their own activity figures when they click "Grade me".
+- Single purpose: Show the user a grade of how efficiently they use LinkedIn Sales Navigator, calculated from their own activity figures when they click "Grade me" (or "Sync now" on gauge.gershon.ai, which the content script relays as the same request).
 - Permission justifications (the manifest requests exactly these, nothing else):
   - `scripting`: after the user clicks "Grade me", read the visible figures on the user's own LinkedIn pages that Gauge opens in its own small window (opened behind the user's window, not focused). The only page interaction is pressing "Show more results" on the user's own groups list so all groups are counted.
   - `storage`: remember that the user accepted the data notice, and show reading progress in the popup.
@@ -56,13 +56,13 @@ Updated: 2026-11-15 (v0.3.0 package built with `node tools/build-extension.mjs`)
 - gauge.gershon.ai verified in Google Search Console and set as the official site
 
 ## Package and assets (ready)
-- Upload package: `dist/gauge-extension-0.4.0.zip` (built from `extension/`)
+- Upload package: `dist/gauge-extension-0.5.0.zip` (built from `extension/`)
 - Store icon: `store/assets/store-icon-128.png` (16/32/48/128 are inside the package)
 - Screenshots 1280×800: `store/assets/screenshot-1-report.png` (demo figures, not a real person), `store/assets/screenshot-2-consent.png`
 - Small promo tile 440×280: `store/assets/promo-small-440x280.png`
 
 ## Reviewer notes (test instructions field)
-Be signed in to LinkedIn (an account with Sales Navigator gives the full report; without it, the Sales Navigator levers are listed as "not read"). Click the Gauge toolbar icon, accept the notice, click "Grade me". Gauge opens each page in one small window it creates behind the user's window, reads it, closes the window at the end, and after about two minutes opens the report at gauge.gershon.ai/report. Signing in at gauge.gershon.ai is optional; it saves the scores and opens the Gauge app (gauge.gershon.ai/app: dashboard, history, compare, invite, share, extension status, settings with "Delete my data"). The Extension page there shows the installed version, read from the attribute the `site-flag.js` content script sets.
+Be signed in to LinkedIn (an account with Sales Navigator gives the full report; without it, the Sales Navigator levers are listed as "not read"). Click the Gauge toolbar icon, accept the notice, click "Grade me". Gauge opens each page in one small window it creates behind the user's window, reads it, closes the window at the end, and after about two minutes opens the report at gauge.gershon.ai/report. Signing in at gauge.gershon.ai is optional; it saves the scores and opens the Gauge app (gauge.gershon.ai/app: dashboard, history, compare, invite, share, extension status, settings with "Delete my data"). The Extension page there shows the installed version, read from the attribute the `site-flag.js` content script sets. From v0.5.0 the same content script relays the site's "Sync now" click to the service worker as the "Grade me" request (consent still required; if not given, the notice opens in a tab). On first install only, the extension opens the welcome page gauge.gershon.ai/app?installed=1 (no permission needed).
 
 ## Known review risk
 Gauge reads LinkedIn pages; LinkedIn's terms restrict third-party extensions. Mitigations: own figures only, read-only, click-to-run, no affiliation claim. Fallback if rejected: no-extension version (SSI screenshot + questions).

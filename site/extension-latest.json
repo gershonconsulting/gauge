@@ -1,7 +1,8 @@
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "minVersion": "0.2.0",
-  "publishedAt": "2026-11-18",
-  "download": "/downloads/gauge-extension-0.4.0.zip",
-  "storeUrl": "https://chromewebstore.google.com/detail/epadkmhdddplghochdbobleclchhdbef"
+  "publishedAt": "2026-11-23",
+  "download": "/downloads/gauge-extension-0.5.0.zip",
+  "storeUrl": "https://chromewebstore.google.com/detail/epadkmhdddplghochdbobleclchhdbef",
+  "storeVersion": "0.3.0"
 }

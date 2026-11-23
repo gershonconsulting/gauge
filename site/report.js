@@ -1,4 +1,5 @@
 import { computeGrade, decodeSignals } from '/score.js';
+import { leverList, moveCard } from '/levers-ui.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -57,29 +58,11 @@ function render(r, s) {
   if (s.ssi?.industryTop != null) chips.append(el('span', 'chip', `Top ${s.ssi.industryTop}% of your industry`));
   if (s.ssi?.networkTop != null) chips.append(el('span', 'chip', `Top ${s.ssi.networkTop}% of your network`));
 
-  const lv = $('levers');
-  for (const [group, title] of [['fill', 'What you fill'], ['work', 'What you work']]) {
-    const items = r.levers.filter((l) => l.group === group && l.value != null);
-    if (!items.length) continue;
-    lv.append(el('p', 'group', title));
-    for (const l of items) {
-      const row = el('div', 'lever');
-      const what = el('div');
-      what.append(el('b', null, l.name), el('span', null, l.detail));
-      const track = el('div', 'track');
-      const f = el('div', 'fill ' + tone(l.value));
-      f.style.width = l.value + '%';
-      track.append(f);
-      row.append(what, track, el('span', 'val num', l.value + '%'));
-      lv.append(row);
-    }
-  }
+  $('levers').append(leverList(r.levers));
 
   if (r.moves.length) {
     for (const mv of r.moves) {
-      const d = el('div', 'move');
-      d.append(el('span', 'gain num', `+${mv.gain} pts`), el('b', null, mv.title), el('span', null, mv.why));
-      $('moves').append(d);
+      $('moves').append(moveCard(mv));
     }
     $('path').textContent = `Today ${r.overall}% → with these three ${r.after}% (grade ${r.afterGrade})`;
   } else $('moves-card').hidden = true;
@@ -102,7 +85,7 @@ function render(r, s) {
 
   if (r.notRead.length) {
     $('missing-card').hidden = false;
-    $('missing').textContent = r.notRead.join(', ') + '. These were left out of the percentage.';
+    $('missing').textContent = r.notRead.join(', ') + '. These were left out of the percentage. Usually LinkedIn had not finished loading that page: click the line above to open it, check you are signed in to Sales Navigator, then press "Grade me" again. If it still says "not read", use the Support page (gauge.gershon.ai/support).';
   }
 }
 

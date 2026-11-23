@@ -6,60 +6,63 @@
 
 export const LIMITS = { inmailPerMonth: 50, invitesPerWeek: 100, savedLeads: 10000, savedAccounts: 10000, groups: 100 };
 
+// Where each figure is read on LinkedIn: every lever line in the app and report links there.
+const LI = 'https://www.linkedin.com';
+
 const pct = (x) => Math.max(0, Math.min(100, Math.round(x * 100)));
 
 export const LEVERS = [
   {
-    id: 'inmail', group: 'fill', name: 'InMail credits', target: 70,
+    id: 'inmail', source: LI + '/sales/settings', group: 'fill', name: 'InMail credits', target: 70,
     read: (s) => (s.salesnav?.inmailLeft == null ? null : pct(1 - s.salesnav.inmailLeft / LIMITS.inmailPerMonth)),
     detail: (s) => `${s.salesnav.inmailLeft} left of about ${LIMITS.inmailPerMonth} a month`,
     move: 'Spend your InMail credits every month',
     why: 'Unused credits expire. Send them to saved leads who have not accepted an invitation.',
   },
   {
-    id: 'invites', group: 'fill', name: 'Connection invitations', target: 70,
+    id: 'invites', source: LI + '/mynetwork/invitation-manager/sent/', group: 'fill', name: 'Connection invitations', target: 70,
     read: (s) => (s.invitations?.read ? pct(s.invitations.under1w / LIMITS.invitesPerWeek) : null),
     detail: (s) => `About ${s.invitations.under1w} sent in the last week, against a ${LIMITS.invitesPerWeek}-a-week pace`,
     move: 'Send about 100 invitations a week',
     why: 'A steady pace keeps new conversations coming without tripping LinkedIn limits.',
   },
   {
-    id: 'savedAccounts', group: 'fill', name: 'Saved accounts', target: 70,
+    id: 'savedAccounts', source: LI + '/sales/lists/company', group: 'fill', name: 'Saved accounts', target: 70,
     read: (s) => (s.salesnav?.savedAccounts == null ? null : pct(s.salesnav.savedAccounts / LIMITS.savedAccounts)),
     detail: (s) => `${fmt(s.salesnav.savedAccounts)} of ${fmt(LIMITS.savedAccounts)}`,
     move: 'Save the accounts you target',
     why: 'Saved accounts feed alerts and account lists, which is where Sales Navigator earns its price.',
   },
   {
-    id: 'savedLeads', group: 'fill', name: 'Saved leads', target: 70,
+    id: 'savedLeads', source: LI + '/sales/lists/people', group: 'fill', name: 'Saved leads', target: 70,
     read: (s) => (s.salesnav?.savedLeads == null ? null : pct(s.salesnav.savedLeads / LIMITS.savedLeads)),
     detail: (s) => `${fmt(s.salesnav.savedLeads)} of ${fmt(LIMITS.savedLeads)}`,
     move: 'Save the decision-makers you want to reach',
     why: 'Saved leads unlock job-change and post alerts, your best reasons to write.',
   },
   {
-    id: 'groups', group: 'fill', name: 'Groups joined', target: 70,
+    id: 'groups', source: LI + '/groups/', group: 'fill', name: 'Groups joined', target: 70,
     read: (s) => (s.groups?.joined == null ? null : pct(s.groups.joined / LIMITS.groups)),
     detail: (s) => `${fmt(s.groups.joined)} of the ${LIMITS.groups} LinkedIn allows`,
     move: 'Join the groups your buyers are in',
     why: 'Group members can be found and messaged through the group. Each empty slot is an audience you are not reaching.',
   },
   {
-    id: 'find', group: 'work', name: 'Finding the right people', target: 70,
+    id: 'find', source: LI + '/sales/ssi', group: 'work', name: 'Finding the right people', target: 70,
     read: (s) => (s.ssi?.find == null ? null : pct(s.ssi.find / 25)),
     detail: (s) => `SSI part: ${s.ssi.find} of 25`,
     move: 'Open your saved searches every Monday',
     why: 'New results pile up unread. A weekly pass lifts "Find the right people".',
   },
   {
-    id: 'engage', group: 'work', name: 'Engaging with insights', target: 60,
+    id: 'engage', source: LI + '/sales/ssi', group: 'work', name: 'Engaging with insights', target: 60,
     read: (s) => (s.ssi?.engage == null ? null : pct(s.ssi.engage / 25)),
     detail: (s) => `SSI part: ${s.ssi.engage} of 25`,
     move: "Comment on five prospects' posts a week",
     why: 'Comments on prospects’ posts are what LinkedIn counts as engaging with insights.',
   },
   {
-    id: 'lists', group: 'work', name: 'Lists kept alive', target: 50,
+    id: 'lists', source: LI + '/sales/lists/people', group: 'work', name: 'Lists kept alive', target: 50,
     read: (s) => {
       const l = listsTotal(s);
       return l && l.lists ? pct(l.updated30d / l.lists) : null;
@@ -75,7 +78,7 @@ export const LEVERS = [
     // Bonus lever: only Page admins have a reading; for everyone else it is left out of the average.
     // Proxy (Claude's proposal 2026-11-17): invitations sent in a month (last week × 4) against the
     // unique visitors your company Page had in 30 days. Visitor names are never read.
-    id: 'pageVisitors', group: 'work', name: 'Page visitors worked', target: 70,
+    id: 'pageVisitors', source: LI + '/feed/', group: 'work', name: 'Page visitors worked', target: 70,
     read: (s) => {
       const v = s.page?.visitors30d;
       if (!v || !s.invitations?.read) return null;
@@ -118,7 +121,7 @@ function summarize(levers) {
     .filter((l) => l.value < l.target)
     .map((l) => {
       const def = LEVERS.find((d) => d.id === l.id);
-      return { id: l.id, gain: Math.round((l.target - l.value) / n), title: def.move, why: def.why, from: l.value, to: l.target };
+      return { id: l.id, gain: Math.round((l.target - l.value) / n), title: def.move, why: def.why, source: def.source, from: l.value, to: l.target };
     })
     .sort((a, b) => b.gain - a.gain)
     .slice(0, 3);
@@ -131,7 +134,7 @@ export function fromLevers(values) {
   const v = values || {};
   const levers = LEVERS.map((l) => {
     const x = v[l.id];
-    return { id: l.id, group: l.group, name: l.name, value: Number.isInteger(x) && x >= 0 && x <= 100 ? x : null, target: l.target };
+    return { id: l.id, group: l.group, name: l.name, value: Number.isInteger(x) && x >= 0 && x <= 100 ? x : null, target: l.target, source: l.source, move: l.move, why: l.why };
   });
   const r = summarize(levers);
   return { ...r, grade: gradeFor(r.overall), afterGrade: gradeFor(r.after), levers };
@@ -141,7 +144,7 @@ export function computeGrade(signals) {
   const s = signals || {};
   const levers = LEVERS.map((l) => {
     const value = l.read(s);
-    return { id: l.id, group: l.group, name: l.name, value, detail: value == null ? null : l.detail(s), target: l.target };
+    return { id: l.id, group: l.group, name: l.name, value, detail: value == null ? null : l.detail(s), target: l.target, source: l.source, move: l.move, why: l.why };
   });
   const { overall, fill, work, moves, after } = summarize(levers);
 
