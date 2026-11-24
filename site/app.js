@@ -640,6 +640,29 @@ async function renderSettings(box) {
   sh.append(lab2, st2);
   out.push(sh);
 
+  if (s.body.canSendFigures === true) {
+    const fg = card(el('h2', null, 'My Gershon dashboard'));
+    const lab3 = el('label', 'toggle');
+    const cb3 = el('input');
+    cb3.type = 'checkbox';
+    cb3.checked = s.body.sendFigures === true;
+    cb3.disabled = noKv;
+    const txt3 = el('span');
+    txt3.append(el('b', null, 'Send my full LinkedIn figures to my Gershon dashboard'), el('br'),
+      el('span', 'muted small', 'On: each sync also saves the numbers Gauge read (SSI, invitations, profile views, impressions, InMail credits, saved leads and accounts, lists, groups, Page visitors) so tools.gershoncrm.com can show them. Numbers only, never names or text. Off (default): only your scores are saved, and turning it off deletes the saved figures.'));
+    lab3.append(cb3, txt3);
+    const st3 = el('p', 'status');
+    cb3.addEventListener('change', async () => {
+      cb3.disabled = true;
+      st3.textContent = 'Saving…';
+      const r = await api('/api/settings', { method: 'POST', body: JSON.stringify({ sendFigures: cb3.checked }) }).catch(() => ({ ok: false }));
+      if (r.ok) { st3.textContent = cb3.checked ? 'Saved. Your next sync sends the figures.' : 'Saved. Figures deleted.'; drop('settings'); } else { cb3.checked = !cb3.checked; st3.textContent = 'Could not save. Try again.'; }
+      cb3.disabled = false;
+    });
+    fg.append(lab3, st3);
+    out.push(fg);
+  }
+
   const del = card(el('h2', null, 'Delete my data'), el('p', 'muted', 'Deletes your profile, every saved test, your settings, your invite link and invite links in both directions, and your place on leaderboards. Then you are signed out. This cannot be undone.'));
   const start = el('button', 'btn danger small', 'Delete my data');
   start.type = 'button';

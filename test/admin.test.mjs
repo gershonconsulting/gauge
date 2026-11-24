@@ -60,7 +60,7 @@ test('names and scores only for members who opted in; others only counted', asyn
   assert.equal((await (await call(env, '/api/admin/summary', ADMIN)).json()).people.length, 0);
   // the showName setting keeps working on its own
   const r = await (await call(env, '/api/settings', { sub: 'a', method: 'POST', body: { showName: true } })).json();
-  assert.deepEqual(r, { storage: true, showName: true, shareWithGershon: false });
+  assert.deepEqual(r, { storage: true, showName: true, shareWithGershon: false, canSendFigures: false, sendFigures: false });
 });
 
 test('daily report: once per 20 h, fixed recipient, Resend called, admin force/preview', async () => {
