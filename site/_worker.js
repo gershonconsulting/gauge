@@ -329,6 +329,18 @@ function testDate(v) {
 // through a read binding on this KV namespace). All three are removed when the switch goes off or on delete-me.
 const FIGURE_GROUPS = ['ssi', 'invitations', 'dashboard', 'content', 'lists', 'salesnav', 'groups', 'page'];
 const FIGHIST_CAP = 100;
+// Weekly invitation counts kept with each test (numbers only) for the "Invitations sent per week" card:
+// week = sent in the 7 days before the sync and still pending, prevWeek = sent 7–13 days before, pending = total pending.
+export function cleanInvites(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const out = {};
+  for (const k of ['week', 'prevWeek', 'pending']) {
+    const v = raw[k];
+    if (Number.isInteger(v) && v >= 0 && v <= 100000) out[k] = v;
+  }
+  return out.week != null ? out : null;
+}
+
 export function cleanFigures(raw, depth = 0) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || depth > 2) return null;
   const out = {};
@@ -379,6 +391,8 @@ export async function saveGrade(request, env) {
   const [m] = await ensureMember(kv, s);
   const hist = (await getJson(kv, `hist:${s.sub}`)) || [];
   const entry = { at, overall, fill: record.fill, work: record.work, grade: record.grade, levers };
+  const inv = cleanInvites(body.invites);
+  if (inv) entry.inv = inv;
   const personalBest = hist.every((h) => overall > h.overall);
   hist.push(entry);
   hist.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));

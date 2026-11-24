@@ -91,3 +91,27 @@ export function extensionState({ chromium, installed, latest }) {
   if (!installed) return 'missing';
   return compareVersions(installed, latest) < 0 ? 'outdated' : 'current';
 }
+
+// "Invitations sent per week" from saved tests ([{at, inv:{week, prevWeek, pending}}], any order).
+// One row per ISO week of sync (the latest sync of that week). A sync's "prevWeek" fills the week before
+// when no sync was made that week. Counts are invitations still pending: accepted ones leave LinkedIn's
+// Sent list, so these are floors. Newest first, at most `max` rows.
+export function weeklyInvites(items, max = 8) {
+  const DAY = 86400000;
+  const byWeek = new Map();
+  const tests = (items || []).filter((x) => x?.inv && Number.isInteger(x.inv.week) && !Number.isNaN(new Date(x.at).getTime()))
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+  for (const t of tests) {
+    const k = isoWeek(new Date(t.at));
+    if (!byWeek.has(k)) byWeek.set(k, { week: k, end: t.at, count: t.inv.week, pending: t.inv.pending ?? null, from: 'sync' });
+  }
+  for (const t of tests) {
+    if (!Number.isInteger(t.inv.prevWeek)) continue;
+    const end = new Date(new Date(t.at).getTime() - 7 * DAY);
+    const k = isoWeek(end);
+    if (!byWeek.has(k)) byWeek.set(k, { week: k, end: end.toISOString(), count: t.inv.prevWeek, pending: null, from: 'next' });
+  }
+  const rows = [...byWeek.values()].sort((a, b) => new Date(b.end) - new Date(a.end)).slice(0, max);
+  const avg = rows.length ? Math.round(rows.reduce((n, r) => n + r.count, 0) / rows.length) : null;
+  return { rows, avg };
+}

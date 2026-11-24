@@ -125,6 +125,8 @@ async function save(r) {
         overall: r.overall, fill: r.fill, work: r.work, grade: r.grade,
         levers: Object.fromEntries(r.levers.filter((l) => l.value != null).map((l) => [l.id, l.value])),
         at: signals?.readAt,
+        // Weekly invitation counts (numbers only) for the "Invitations sent per week" card.
+        ...(signals?.invitations?.read ? { invites: { week: signals.invitations.under1w, prevWeek: signals.invitations.w1, pending: signals.invitations.pending } } : {}),
         ...(st?.sendFigures === true ? { figures: signals } : {}),
       }),
     });
