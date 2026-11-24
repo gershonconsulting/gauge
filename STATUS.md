@@ -69,3 +69,4 @@ Whenever `extension/` changes: bump `version` in the manifest, run `node tools/b
 - ❌ 0.5.0 must replace 0.4.0 in the Chrome Web Store review (cancel the 0.4.0 review, upload dist/gauge-extension-0.5.0.zip). After approval set `storeVersion` to 0.5.0 and redeploy. Sync now only shows for 0.5.0+.
 
 - ✅ 2026-11-24 (Olivier chose option 1): admin-only setting "Send my full LinkedIn figures to my Gershon dashboard" (Settings → My Gershon dashboard, off by default). When on, the report page sends the raw figures with the grade; the worker keeps numbers only (`cleanFigures`) in `figures:<id>`, `fighist:<id>` (≤100) and `feed:<email>`, read by tools.gershoncrm.com through a KV binding. Off or delete-me removes all three. Extension unchanged (no store review needed); privacy policy + store notes updated. 79 tests pass.
+- ✅ 2026-11-24 deployed to production (main 4c1edf2, /api/health 0.5.0); setting on for olivier@attia.com. ❌ First figures arrive with the next "Grade me".
