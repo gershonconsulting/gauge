@@ -115,6 +115,8 @@ async function save(r) {
       return;
     }
     $('who-name').textContent = me.name;
+    // Raw figures leave this tab only when an admin switched on "send my full figures" in Settings.
+    const st = await fetch('/api/settings', { credentials: 'same-origin' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
     const res = await fetch('/api/grade', {
       method: 'POST',
       credentials: 'same-origin',
@@ -123,6 +125,7 @@ async function save(r) {
         overall: r.overall, fill: r.fill, work: r.work, grade: r.grade,
         levers: Object.fromEntries(r.levers.filter((l) => l.value != null).map((l) => [l.id, l.value])),
         at: signals?.readAt,
+        ...(st?.sendFigures === true ? { figures: signals } : {}),
       }),
     });
     const out = await res.json().catch(() => ({}));

@@ -321,8 +321,32 @@ function testDate(v) {
   return new Date(Number.isFinite(t) && t <= now && t >= now - 7 * 86400000 ? t : now).toISOString();
 }
 
-// Save the user's scores (never the raw LinkedIn figures). Stored only when GAUGE_KV is bound;
-// the privacy policy lists exactly these fields.
+// Full LinkedIn figures, opt-in (2026-11-24). Only for admin accounts (Gershon staff) who switch on
+// "Send my full LinkedIn figures to my Gershon dashboard" (member.sendFigures, off by default). The
+// report page sends `figures` only when that switch is on, and this worker checks it again. Only
+// numbers are kept (counts, scores, percentages) — never names, list names, URLs or any text.
+// Keys: figures:<id> (latest), fighist:<id> (≤ FIGHIST_CAP), feed:<email> (read by tools.gershoncrm.com
+// through a read binding on this KV namespace). All three are removed when the switch goes off or on delete-me.
+const FIGURE_GROUPS = ['ssi', 'invitations', 'dashboard', 'content', 'lists', 'salesnav', 'groups', 'page'];
+const FIGHIST_CAP = 100;
+export function cleanFigures(raw, depth = 0) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || depth > 2) return null;
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (depth === 0 && !FIGURE_GROUPS.includes(k)) continue;
+    if (!/^[A-Za-z0-9]{1,30}$/.test(k)) continue;
+    if (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1e9) out[k] = v;
+    else if (v && typeof v === 'object' && !Array.isArray(v)) { const c = cleanFigures(v, depth + 1); if (c) out[k] = c; }
+  }
+  return Object.keys(out).length ? out : null;
+}
+const feedKey = (email) => `feed:${String(email || '').trim().toLowerCase()}`;
+async function dropFigures(kv, s) {
+  await Promise.all([kv.delete(`figures:${s.sub}`), kv.delete(`fighist:${s.sub}`), s.email ? kv.delete(feedKey(s.email)) : null]);
+}
+
+// Save the user's scores. Raw LinkedIn figures are stored only for an admin who switched on
+// "send my full figures" (see above); the privacy policy lists exactly these fields.
 export async function saveGrade(request, env) {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   const s = await session(request, env);
@@ -361,6 +385,18 @@ export async function saveGrade(request, env) {
   await putJson(kv, `hist:${s.sub}`, hist.slice(-HISTORY_CAP));
   await putJson(kv, `latest:${s.sub}`, record);
 
+  let figuresSaved = false;
+  const figures = cleanFigures(body.figures);
+  if (figures && m.sendFigures === true && isAdmin(s, env)) {
+    await putJson(kv, `figures:${s.sub}`, { at, figures });
+    const fh = (await getJson(kv, `fighist:${s.sub}`)) || [];
+    fh.push({ at, figures });
+    fh.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+    await putJson(kv, `fighist:${s.sub}`, fh.slice(-FIGHIST_CAP));
+    if (s.email) await putJson(kv, feedKey(s.email), { memberId: s.sub, name: s.name, email: s.email, at, overall, fill: record.fill, work: record.work, grade: record.grade, levers, figures });
+    figuresSaved = true;
+  }
+
   // Global aggregate (approximate under concurrent writes; KV has no transactions).
   const stats = (await getJson(kv, 'stats:global')) || { users: 0, hist: Array(21).fill(0) };
   const firstTest = m.lastOverall == null;
@@ -384,7 +420,7 @@ export async function saveGrade(request, env) {
       await putJson(kv, `invites:${m.invitedBy}`, inv);
     }
   }
-  return json({ saved: true, personalBest, tests: m.tests });
+  return json({ saved: true, personalBest, tests: m.tests, figuresSaved });
 }
 
 async function history(request, env) {
@@ -402,14 +438,17 @@ async function settings(request, env) {
   if (request.method === 'GET') {
     if (!kv) return noStorage({ showName: false });
     const m = await getJson(kv, `member:${s.sub}`);
-    return json({ storage: true, showName: m?.showName === true, shareWithGershon: m?.shareWithGershon === true });
+    return json({ storage: true, showName: m?.showName === true, shareWithGershon: m?.shareWithGershon === true,
+      canSendFigures: isAdmin(s, env), sendFigures: isAdmin(s, env) && m?.sendFigures === true });
   }
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   let body;
   try { body = await request.json(); } catch { return json({ error: 'bad_request' }, 400); }
   const hasShow = typeof body?.showName === 'boolean';
   const hasShare = typeof body?.shareWithGershon === 'boolean';
-  if (!hasShow && !hasShare) return json({ error: 'bad_request' }, 400);
+  const hasFig = typeof body?.sendFigures === 'boolean';
+  if (!hasShow && !hasShare && !hasFig) return json({ error: 'bad_request' }, 400);
+  if (hasFig && !isAdmin(s, env)) return json({ error: 'forbidden' }, 403);
   if (!kv) return json({ storage: false, error: 'storage_not_configured' }, 503);
   const [m] = await ensureMember(kv, s);
   if (hasShow) m.showName = body.showName;
@@ -419,8 +458,14 @@ async function settings(request, env) {
     m.shareWithGershon = body.shareWithGershon;
     m.shareAt = body.shareWithGershon ? new Date().toISOString() : null;
   }
+  if (hasFig) {
+    m.sendFigures = body.sendFigures;
+    m.sendFiguresAt = body.sendFigures ? new Date().toISOString() : null;
+    if (!body.sendFigures) await dropFigures(kv, s);
+  }
   await putJson(kv, `member:${s.sub}`, m);
-  return json({ storage: true, showName: m.showName === true, shareWithGershon: m.shareWithGershon === true });
+  return json({ storage: true, showName: m.showName === true, shareWithGershon: m.shareWithGershon === true,
+    canSendFigures: isAdmin(s, env), sendFigures: isAdmin(s, env) && m.sendFigures === true });
 }
 
 async function invite(request, env) {
@@ -505,7 +550,8 @@ export async function deleteMe(request, env) {
       await kv.put('stats:global', JSON.stringify(stats));
     }
   }
-  const keys = [`member:${id}`, `latest:${id}`, `hist:${id}`, `invites:${id}`];
+  const keys = [`member:${id}`, `latest:${id}`, `hist:${id}`, `invites:${id}`, `figures:${id}`, `fighist:${id}`];
+  if (s.email) keys.push(feedKey(s.email));
   if (m?.code) keys.push(`ref:${m.code}`);
   for (const prefix of [`grade:${id}:`, `rate:${id}:`]) {
     let cursor;
