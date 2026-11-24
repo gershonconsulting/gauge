@@ -1,6 +1,6 @@
 # Gauge — status
 
-Updated: 2026-11-23 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
+Updated: 2026-11-24 · Site: https://gauge.gershon.ai · Repo: gershonconsulting/gauge (main)
 
 ## What it is
 "You are using X% of your Sales Navigator capacity!" Click the extension, get a grade. Independent app (not Radar).
@@ -70,3 +70,6 @@ Whenever `extension/` changes: bump `version` in the manifest, run `node tools/b
 
 - ✅ 2026-11-24 (Olivier chose option 1): admin-only setting "Send my full LinkedIn figures to my Gershon dashboard" (Settings → My Gershon dashboard, off by default). When on, the report page sends the raw figures with the grade; the worker keeps numbers only (`cleanFigures`) in `figures:<id>`, `fighist:<id>` (≤100) and `feed:<email>`, read by tools.gershoncrm.com through a KV binding. Off or delete-me removes all three. Extension unchanged (no store review needed); privacy policy + store notes updated. 79 tests pass.
 - ✅ 2026-11-24 deployed to production (main 4c1edf2, /api/health 0.5.0); setting on for olivier@attia.com. ❌ First figures arrive with the next "Grade me".
+
+- ✅ 2026-11-24 (dashboard v2, site only, no extension change): each saved test now also keeps 3 invitation counts (`inv: {week, prevWeek, pending}`, numbers only, `cleanInvites` in the worker; sent by report.js for every signed-in user). Dashboard: "Your progress" trend chart with tabs (All / Overall / Filling / Working, hover tooltips), "Invitations sent per week" (KPI tiles + bar chart vs 100/week pace, hover details; `weeklyInvites` in game.js, one bar per ISO week, a sync's prevWeek fills a missing week), "What moved since <last test>" lever deltas. Charts in `site/charts.js`. Privacy policy updated (Nov 24). 82 tests pass.
+- ❌ Weekly counts are pending invitations only (accepted ones leave LinkedIn's Sent list). Adding accepted connections needs a new page read in the extension (new store review). History starts with the next sync; older tests have no counts.

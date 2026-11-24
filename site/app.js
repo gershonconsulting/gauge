@@ -3,7 +3,8 @@
 // (member photos are shown only for members who opted in, from the address LinkedIn gave at sign-in).
 import { fromLevers } from '/score.js';
 import { leverList, moveCard } from '/levers-ui.js';
-import { levelFor, weeklyStreak, isPersonalBest, personalBest, inviteBadges, extensionState, compareVersions } from '/game.js';
+import { trendChart, barChart, leverDelta } from '/charts.js';
+import { levelFor, weeklyStreak, weeklyInvites, isPersonalBest, personalBest, inviteBadges, extensionState, compareVersions } from '/game.js';
 
 const PAGES = ['dashboard', 'history', 'compare', 'invite', 'share', 'extension', 'settings'];
 const PUBLIC_PAGES = new Set(['extension']); // usable while signed out
@@ -286,15 +287,84 @@ async function renderDashboard(box) {
   out.push(hero);
 
   out.push(lastSyncCard(latest.at));
+  out.push(trendCard(items));
   if (r.levers.some((l) => l.value != null)) {
     out.push(card(el('h2', null, 'Capacity, lever by lever'), el('p', 'muted', 'Each bar is what you use against what Sales Navigator gives you. Click a line to open that page on LinkedIn.'), leverList(r.levers)));
   }
+  const inv = invitesCard(items);
+  if (inv) out.push(inv);
+  const moved = leverChangeCard(latest, prev);
+  if (moved) out.push(moved);
   if (r.moves.length) {
     const moves = el('div', 'moves');
     for (const mv of r.moves) moves.append(moveCard(mv));
     out.push(card(el('h2', null, 'Three moves that add the most'), moves));
   }
   box.replaceChildren(...out);
+}
+// "Invitations sent per week": one row per week with a sync (see weeklyInvites in game.js).
+const INVITES_PACE = 100;
+function invitesCard(items) {
+  const { rows, avg } = weeklyInvites(items);
+  if (!rows.length) return null;
+  const last = rows[0];
+  const best = Math.max(...rows.map((r) => r.count));
+  const kpis = el('div', 'kpis');
+  kpis.append(
+    stat(String(last.count), `last 7 days (to ${short(last.end)})`, last.count >= INVITES_PACE * 0.7 ? 'up' : 'down'),
+    stat(String(avg), `average a week · ${rows.length} week${rows.length === 1 ? '' : 's'}`),
+    stat(String(best), 'best week'),
+    stat(last.pending != null ? last.pending.toLocaleString('en-US') : '—', 'pending in total'));
+  const link = el('a', null, 'Open your Sent invitations on LinkedIn');
+  link.href = 'https://www.linkedin.com/mynetwork/invitation-manager/sent/';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  return card(
+    el('h2', null, 'Invitations sent per week'),
+    el('p', 'muted', `Against a pace of ${INVITES_PACE} a week. Each bar is the 7 days before a sync — hover a bar for details.`),
+    kpis,
+    barChart(rows, INVITES_PACE),
+    el('p', 'muted small', 'Counts are invitations still pending. Invitations people already accepted leave LinkedIn\'s Sent list, so the real number sent is a little higher. Paler bars were read at the following sync. Sync once a week (every Monday, for example) to build the full history.'),
+    append(el('p', 'small'), link));
+}
+
+const SERIES = {
+  all: [{ key: 'overall', name: 'Overall', color: '#FE1B04', width: 3, area: true }, { key: 'fill', name: 'Filling it', color: '#2563eb', dash: '6 4' }, { key: 'work', name: 'Working it', color: '#1a9e55', dash: '2 4' }],
+  overall: [{ key: 'overall', name: 'Overall', color: '#FE1B04', width: 3, area: true }],
+  fill: [{ key: 'fill', name: 'Filling it', color: '#2563eb', width: 3, area: true }],
+  work: [{ key: 'work', name: 'Working it', color: '#1a9e55', width: 3, area: true }],
+};
+function trendCard(items) {
+  const pts = [...items].reverse();
+  const c = card(el('h2', null, 'Your progress'));
+  const tabs = el('div', 'tabs');
+  const holder = el('div');
+  const legend = el('div', 'legend');
+  const pick = (k) => {
+    for (const b of tabs.children) b.classList.toggle('on', b.dataset.k === k);
+    holder.replaceChildren(trendChart(pts, SERIES[k]));
+    legend.replaceChildren(...SERIES[k].map((s) => { const i = el('span', null, s.name); i.style.setProperty('--c', s.color); return i; }));
+  };
+  for (const [k, label] of [['all', 'All'], ['overall', 'Overall'], ['fill', 'Filling it'], ['work', 'Working it']]) {
+    const b = el('button', 'tab', label);
+    b.type = 'button';
+    b.dataset.k = k;
+    b.addEventListener('click', () => pick(k));
+    tabs.append(b);
+  }
+  c.append(append(el('div', 'cardhead'), tabs, legend), holder);
+  if (pts.length < 2) c.append(el('p', 'muted small', 'One test so far: your next sync draws the line.'));
+  pick('all');
+  return c;
+}
+function leverChangeCard(latest, prev) {
+  if (!prev?.levers) return null;
+  const now = fromLevers(latest.levers).levers;
+  const before = Object.fromEntries(fromLevers(prev.levers).levers.map((l) => [l.id, l.value]));
+  const rows = now.filter((l) => l.value != null && before[l.id] != null).map((l) => ({ name: l.name, value: l.value, prev: before[l.id] }));
+  if (!rows.length) return null;
+  rows.sort((a, b) => Math.abs(b.value - b.prev) - Math.abs(a.value - a.prev));
+  return card(el('h2', null, 'What moved since ' + short(prev.at)), el('p', 'muted', 'Solid bar = now, outline = previous test. Biggest changes first.'), leverDelta(rows));
 }
 function firstTestCard() {
   const c = card(el('span', 'step', 'Step 2 of 2'), el('h2', null, 'Run your first sync'),
