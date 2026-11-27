@@ -349,8 +349,15 @@ if (err) {
   $('error').hidden = false;
   history.replaceState(null, '', '/');
 }
-fetch('/api/me', { credentials: 'same-origin' })
-  .then((r) => (r.ok ? r.json() : null))
+// The session cookie is HttpOnly, so the page cannot tell if someone is signed in. Ask /api/me only
+// when this browser has signed in before (hint in localStorage); first-time visitors make no 401 call.
+const HINT = 'gauge_signed_in';
+const hint = (v) => { try { v ? localStorage.setItem(HINT, '1') : localStorage.removeItem(HINT); } catch {} };
+let hinted = false;
+try { hinted = localStorage.getItem(HINT) === '1'; } catch {}
+document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a[href^="/api/auth/linkedin/start"]')) hint(true); });
+(hinted ? fetch('/api/me', { credentials: 'same-origin' }) : Promise.resolve({ ok: false }))
+  .then((r) => (r.ok ? r.json() : (hint(false), null)))
   .then((me) => {
     if (!me || !me.signedIn) return;
     $('nav-out').hidden = true;

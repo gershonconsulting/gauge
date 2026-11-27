@@ -757,7 +757,7 @@ async function renderSettings(box) {
 
   const so = el('button', 'btn line small', 'Sign out');
   so.type = 'button';
-  so.addEventListener('click', () => { fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => location.assign('/')); });
+  so.addEventListener('click', () => { fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => { try { localStorage.removeItem('gauge_signed_in'); } catch {} location.assign('/'); }); });
   out.push(card(el('h2', null, 'Account'), el('p', 'muted', `Signed in with LinkedIn as ${state.me?.name || 'you'}.`), append(el('div', 'actions'), so)), legalCard());
   box.replaceChildren(...out);
 }
@@ -799,7 +799,15 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(
 window.addEventListener('hashchange', route);
 
 (async () => {
-  const me = await api('/api/me').catch(() => ({ ok: false, body: {} }));
+  // HttpOnly session cookie: only call /api/me when this browser has signed in before, so a signed-out
+  // visitor makes no 401 request. Sign-in links set the hint; a failed /api/me or logout clears it.
+  const HINT = 'gauge_signed_in';
+  const hint = (v) => { try { v ? localStorage.setItem(HINT, '1') : localStorage.removeItem(HINT); } catch {} };
+  let hinted = false;
+  try { hinted = localStorage.getItem(HINT) === '1'; } catch {}
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a[href^="/api/auth/linkedin/start"]')) hint(true); });
+  const me = hinted ? await api('/api/me').catch(() => ({ ok: false, body: {} })) : { ok: false, body: {} };
+  if (hinted && !(me.ok && me.body.signedIn)) hint(false);
   state.me = me.ok && me.body.signedIn ? me.body : null;
   if (state.me) {
     $('side-who').hidden = false;

@@ -63,3 +63,8 @@ PR #3 is merged (main = 0.4.0); no known failing test as of 2026-11-19.
 ✅ PR #11 merged - title "Gauge by Gershon.AI — How good are you with Sales Navigator?" (82/82 tests).
 ❌ Not live: the Pages project is direct-upload -> Charles uploads current main (site/).
 ❌ Version not bumped (APP_VERSION is tied to the extension manifest).
+
+## 2026-11-27 nightly push (gauge-401)
+✅ Console 401 fixed: signed-out visitors no longer call /api/me on / and /app (HttpOnly cookie -> localStorage hint "gauge_signed_in", set on sign-in click, cleared on logout / failed /api/me). Server auth untouched. 82/82 tests.
+❌ Version NOT bumped (still 0.5.0): bumping needs a new extension zip (binary, cannot be pushed through the connector) and would disturb the Chrome Web Store 0.5.0 review.
+❌ Not live: direct-upload Pages project -> Charles uploads site/ from main.
